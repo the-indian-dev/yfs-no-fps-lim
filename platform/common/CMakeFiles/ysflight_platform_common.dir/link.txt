@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_platform_common.a CMakeFiles/ysflight_platform_common.dir/fswindow.cpp.o
+/usr/bin/ranlib libysflight_platform_common.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_config.a CMakeFiles/ysflight_config.dir/fsconfig.cpp.o CMakeFiles/ysflight_config.dir/fsoption.cpp.o CMakeFiles/ysflight_config.dir/fsnetconfig.cpp.o
+/usr/bin/ranlib libysflight_config.a

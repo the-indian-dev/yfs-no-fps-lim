@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_platform_linux.a CMakeFiles/ysflight_platform_linux.dir/fsglx.cpp.o CMakeFiles/ysflight_platform_linux.dir/fsairsound.cpp.o
+/usr/bin/ranlib libysflight_platform_linux.a

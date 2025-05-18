@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysscenery_dnm_gl2.a CMakeFiles/ysscenery_dnm_gl2.dir/ysscenerygl2.0.cpp.o
+/usr/bin/ranlib libysscenery_dnm_gl2.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_util.a CMakeFiles/ysflight_util.dir/fsbase.cpp.o CMakeFiles/ysflight_util.dir/fsutil.cpp.o
+/usr/bin/ranlib libysflight_util.a

@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -Wno-incompatible-pointer-types -Wl,--no-as-needed -Wl,--dependency-file=CMakeFiles/voiceYsflight64.dir/link.d -shared -Wl,-soname,libvoiceYsflight64.so -o libvoiceYsflight64.so CMakeFiles/voiceYsflight64.dir/fsvoicedll.cpp.o  -lpthread -static-libstdc++ -static-libgcc

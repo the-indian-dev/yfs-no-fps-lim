@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_platform_nownd.a CMakeFiles/ysflight_platform_nownd.dir/fsairsoundnownd.cpp.o CMakeFiles/ysflight_platform_nownd.dir/fsconfigdlgnownd.cpp.o CMakeFiles/ysflight_platform_nownd.dir/fsifnownd.cpp.o
+/usr/bin/ranlib libysflight_platform_nownd.a

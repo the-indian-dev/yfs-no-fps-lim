@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_ui.a CMakeFiles/ysflight_ui.dir/fsrunloop.cpp.o CMakeFiles/ysflight_ui.dir/fsscript.cpp.o CMakeFiles/ysflight_ui.dir/fscmdparaminfo.cpp.o
+/usr/bin/ranlib libysflight_ui.a

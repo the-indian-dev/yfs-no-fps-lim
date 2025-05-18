@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysscenery_dnm.a CMakeFiles/ysscenery_dnm.dir/ysscenery.cpp.o CMakeFiles/ysscenery_dnm.dir/yssceneryio.cpp.o CMakeFiles/ysscenery_dnm.dir/sescenery.cpp.o
+/usr/bin/ranlib libysscenery_dnm.a

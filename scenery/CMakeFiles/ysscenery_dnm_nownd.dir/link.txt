@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysscenery_dnm_nownd.a CMakeFiles/ysscenery_dnm_nownd.dir/ysscenerynownd.cpp.o
+/usr/bin/ranlib libysscenery_dnm_nownd.a

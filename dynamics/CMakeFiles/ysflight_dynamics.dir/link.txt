@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_dynamics.a CMakeFiles/ysflight_dynamics.dir/fsengine.cpp.o CMakeFiles/ysflight_dynamics.dir/fsrealprop.cpp.o CMakeFiles/ysflight_dynamics.dir/fsairproperty.cpp.o
+/usr/bin/ranlib libysflight_dynamics.a

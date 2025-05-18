@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_vehicle.a CMakeFiles/ysflight_vehicle.dir/fsairplaneproperty.cpp.o CMakeFiles/ysflight_vehicle.dir/fsgroundproperty.cpp.o CMakeFiles/ysflight_vehicle.dir/fsproperty.cpp.o CMakeFiles/ysflight_vehicle.dir/fsvehicleproperty.cpp.o CMakeFiles/ysflight_vehicle.dir/fsnavaid.cpp.o
+/usr/bin/ranlib libysflight_vehicle.a

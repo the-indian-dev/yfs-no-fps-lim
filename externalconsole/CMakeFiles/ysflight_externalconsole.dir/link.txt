@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_externalconsole.a CMakeFiles/ysflight_externalconsole.dir/fsinstreading.cpp.o
+/usr/bin/ranlib libysflight_externalconsole.a

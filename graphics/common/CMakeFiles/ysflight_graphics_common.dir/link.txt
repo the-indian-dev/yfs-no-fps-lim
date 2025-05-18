@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_graphics_common.a CMakeFiles/ysflight_graphics_common.dir/fswirefont.cpp.o CMakeFiles/ysflight_graphics_common.dir/fsvisual.cpp.o CMakeFiles/ysflight_graphics_common.dir/fsblackout.cpp.o CMakeFiles/ysflight_graphics_common.dir/fsfontrenderer.cpp.o CMakeFiles/ysflight_graphics_common.dir/fsconsole.cpp.o CMakeFiles/ysflight_graphics_common.dir/fsopengl.cpp.o CMakeFiles/ysflight_graphics_common.dir/fstexturemanager.cpp.o CMakeFiles/ysflight_graphics_common.dir/fswirefont_makebuf.cpp.o
+/usr/bin/ranlib libysflight_graphics_common.a

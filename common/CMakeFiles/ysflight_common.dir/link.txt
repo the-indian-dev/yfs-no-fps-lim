@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_common.a CMakeFiles/ysflight_common.dir/fsdef.cpp.o CMakeFiles/ysflight_common.dir/fstextresource.cpp.o
+/usr/bin/ranlib libysflight_common.a

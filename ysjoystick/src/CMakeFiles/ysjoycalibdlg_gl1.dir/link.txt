@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysjoycalibdlg_gl1.a CMakeFiles/ysjoycalibdlg_gl1.dir/fsjoycalibdlggl.cpp.o CMakeFiles/ysjoycalibdlg_gl1.dir/fsjoycalibdlg.cpp.o
+/usr/bin/ranlib libysjoycalibdlg_gl1.a

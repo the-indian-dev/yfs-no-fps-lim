@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysjoystick.a CMakeFiles/ysjoystick.dir/linux/ysjoyreader.cpp.o CMakeFiles/ysjoystick.dir/ysjoyreadercommon.cpp.o
+/usr/bin/ranlib libysjoystick.a

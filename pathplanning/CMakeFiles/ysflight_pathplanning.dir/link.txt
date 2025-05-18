@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysflight_pathplanning.a CMakeFiles/ysflight_pathplanning.dir/fsthreatavoidingpath.cpp.o
+/usr/bin/ranlib libysflight_pathplanning.a
