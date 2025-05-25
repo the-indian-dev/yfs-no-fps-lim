@@ -19,6 +19,7 @@
 #include "fsinstpanel.h"
 #include "platform/common/fswindow.h"
 #include "graphics/common/fsopengl.h"
+#include "graphics/common/fsculling.h"
 
 #include "fspluginmgr.h"
 #include "graphics/common/fsfontrenderer.h"
@@ -7067,6 +7068,9 @@ void FsSimulation::SimDrawAirplane(const ActualViewMode &actualViewMode,const Fs
 	auto &viewPoint=actualViewMode.viewPoint;
 	auto &viewMat=actualViewMode.viewMat;
 
+	// Create frustum for culling
+	FsCullingUtil::Frustum frustum = FsCullingUtil::CreateFrustumFromCurrentMatrix();
+	
 	FsAirplane *seeker;
 	double airRad;
 	YsVec3 airPos;
@@ -7078,6 +7082,15 @@ void FsSimulation::SimDrawAirplane(const ActualViewMode &actualViewMode,const Fs
 		{
 			airPos=seeker->GetPosition();
 			airRad=seeker->GetApproximatedCollideRadius();
+
+			// Skip if not visible in view frustum
+			// But always render if very close to the player
+			double distFromViewSq = (airPos-viewPoint).GetSquareLength();
+			if(distFromViewSq > (airRad*airRad)*16.0 && 
+			   FsCullingUtil::IsSphereVisible(frustum, airPos, airRad) == YSFALSE)
+			{
+				continue;
+			}
 
 			if(actualViewMode.actualViewMode==FSBOMBINGVIEW &&
 			   IsPlayerAirplane(seeker)==YSTRUE &&
@@ -7155,6 +7168,9 @@ void FsSimulation::SimDrawGround(const ActualViewMode &actualViewMode,const FsPr
 	auto &viewPoint=actualViewMode.viewPoint;
 	auto &viewMat=actualViewMode.viewMat;
 
+	// Create frustum for culling
+	FsCullingUtil::Frustum frustum = FsCullingUtil::CreateFrustumFromCurrentMatrix();
+
 	FsGround *seeker;
 
 	seeker=NULL;
@@ -7162,6 +7178,19 @@ void FsSimulation::SimDrawGround(const ActualViewMode &actualViewMode,const FsPr
 	{
 		if(seeker->IsAlive()==YSTRUE)
 		{
+			// Get object radius and position for culling
+			double objRad = seeker->Prop().GetOutsideRadius();
+			YsVec3 objPos = seeker->GetPosition();
+			
+			// Skip if not visible in view frustum
+			// But always render if very close to the player
+			double distFromViewSq = (objPos-viewPoint).GetSquareLength();
+			if(distFromViewSq > (objRad*objRad)*16.0 && 
+			   FsCullingUtil::IsSphereVisible(frustum, objPos, objRad) == YSFALSE)
+			{
+				continue;
+			}
+
 			if(actualViewMode.actualViewMode==FSBOMBINGVIEW &&
 			   GetPlayerGround()==seeker)
 			{
@@ -7169,9 +7198,7 @@ void FsSimulation::SimDrawGround(const ActualViewMode &actualViewMode,const FsPr
 			}
 
 
-			double objRad,distance,apparentRad;
-
-			objRad=seeker->Prop().GetOutsideRadius();
+			double distance,apparentRad;
 			distance=(seeker->GetPosition()-viewPoint).GetLength();
 			apparentRad=objRad*proj.prjPlnDist/distance;
 
@@ -7220,6 +7247,19 @@ void FsSimulation::SimDrawGround(const ActualViewMode &actualViewMode,const FsPr
 	{
 		if(aircraftCarrierList[i]->IsAlive()==YSTRUE)
 		{
+			// Get object radius and position for culling
+			double objRad = aircraftCarrierList[i]->Prop().GetOutsideRadius();
+			YsVec3 objPos = aircraftCarrierList[i]->GetPosition();
+			
+			// Skip if not visible in view frustum
+			// But always render if very close to the player
+			double distFromViewSq = (objPos-viewPoint).GetSquareLength();
+			if(distFromViewSq > (objRad*objRad)*16.0 && 
+			   FsCullingUtil::IsSphereVisible(frustum, objPos, objRad) == YSFALSE)
+			{
+				continue;
+			}
+			
 			aircraftCarrierList[i]->Prop().GetAircraftCarrierProperty()->DrawBridge(viewMat);
 			aircraftCarrierList[i]->Prop().GetAircraftCarrierProperty()->DrawArrestingWire();
 		}
