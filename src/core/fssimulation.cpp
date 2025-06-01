@@ -1255,7 +1255,7 @@ YSRESULT FsSimulation::DeleteGround(FsGround *gnd)
 			}
 		}
 
-		
+
 		for(FsGround *gndPtr=NULL; (gndPtr=FindNextGround(gndPtr))!=NULL; )
 		{
 			if(gndPtr->Prop().GetGroundTarget()==gnd)
@@ -1957,7 +1957,7 @@ void FsSimulation::RunReplaySimulationOneStep(FSSIMULATIONSTATE &simState,FsSimu
 				}
 		#endif
 
-				if(currentTime<0.0 && 
+				if(currentTime<0.0 &&
 				  (replayMode==FSREPLAY_FASTREWIND || replayMode==FSREPLAY_VERYFASTREWIND || replayMode==FSREPLAY_BACKWARD || replayMode==FSREPLAY_STEPBACK))
 				{
 					currentTime=0.0;
@@ -3261,7 +3261,7 @@ void FsSimulation::GenerateAttackerAirplane(
 							}
 
 							neo->SetAutopilot(ga);
-							if(info.allowBomb!=YSTRUE && 
+							if(info.allowBomb!=YSTRUE &&
 							   cat!=FSAC_WW2BOMBER &&
 							   cat!=FSAC_WW2DIVEBOMBER) // Always allow bomb for WW2BOMBER
 							{
@@ -3427,7 +3427,7 @@ void FsSimulation::GenerateTank
 
 		if(nRect>0 && nCurrentTank<nTank)
 		{
-			
+
 			YsArray <char const *> tankName;
 			world->GetGroundListByType(tankName,FSTANK);
 			auto nTankName=tankName.GetN();
@@ -4427,7 +4427,7 @@ YSBOOL FsSimulation::MayCollideWithAir(const YsVec3 &objPos,const double objRad,
 		const double air2Rad=airCandidate[i]->Prop().GetOutsideRadius();
 		if(airCandidate[i]!=selfPtr &&
 		   YSTRUE==airCandidate[i]->IsAlive() &&
-		   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,airCandidate[i]) && 
+		   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,airCandidate[i]) &&
 		   dif.GetSquareLength()<=YsSqr((objRad+air2Rad)))
 		{
 			printf("May collide with %s\n",airCandidate[i]->GetIdentifier());
@@ -4447,7 +4447,7 @@ YSBOOL FsSimulation::MayCollideWithGround(const YsVec3 &objPos,const double objR
 		const double gnd2Rad=gndCandidate[i]->Prop().GetOutsideRadius();
 		if(gndCandidate[i]!=selfPtr &&
 		   YSTRUE!=gndCandidate[i]->IsAlive() &&
-		   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,gndCandidate[i]) && 
+		   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,gndCandidate[i]) &&
 		   dif.GetSquareLength()<=YsSqr((objRad+gnd2Rad)))
 		{
 			printf("May collide with %s\n",gndCandidate[i]->GetIdentifier());
@@ -4486,7 +4486,7 @@ YSBOOL FsSimulation::MayCollideWithAir(const YsVec3 &objPos,const YsAtt3 &objAtt
 			const YsVec3 dif=objPos-airCandidate[i]->GetPosition();;
 			const double air2Rad=airCandidate[i]->Prop().GetOutsideRadius();
 			if(airCandidate[i]!=selfPtr &&
-			   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,airCandidate[i]) && 
+			   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,airCandidate[i]) &&
 			   dif.GetSquareLength()<=YsSqr((objRad+air2Rad)))
 			{
 				if(airCandidate[i]->MayCollideWith(airCandidate[i]->GetInverseMatrix(),*selfPtr,objMat,clearance) &&
@@ -4520,7 +4520,7 @@ YSBOOL FsSimulation::MayCollideWithGround(const YsVec3 &objPos,const YsAtt3 &obj
 			const YsVec3 dif=objPos-gndCandidate[i]->GetPosition();
 			const double gnd2Rad=gndCandidate[i]->Prop().GetOutsideRadius();
 			if(gndCandidate[i]!=selfPtr &&
-			   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,gndCandidate[i]) && 
+			   YSTRUE!=YsIsIncluded <const FsExistence *> (nExclude,exclude,gndCandidate[i]) &&
 			   dif.GetSquareLength()<=YsSqr((objRad+gnd2Rad)))
 			{
 				if(gndCandidate[i]->MayCollideWith(gndCandidate[i]->GetInverseMatrix(),*selfPtr,objMat,clearance) &&
@@ -4683,7 +4683,7 @@ void FsSimulation::SimControlByUser(const double &dt,FSUSERCONTROL userControl)
 		{
 			ctlAssign.processNumberKey=YSFALSE;
 		}
-		else if(FSSUBMENU_NONE==subMenu.GetSubMenu() || 
+		else if(FSSUBMENU_NONE==subMenu.GetSubMenu() ||
 		        (FSSUBMENU_SELECTVOR==subMenu.GetSubMenu() && 200==userInput.Nav()))
 		{
 			ctlAssign.processNumberKey=YSTRUE;
@@ -6407,7 +6407,7 @@ void FsSimulation::SimDrawScreen(
 				seeker->AddSmokeToParticleManager(partMan,currentTime,cfgPtr->smkRemainTime);
 			}
 		}
-		partMan.Sort(actualViewMode.viewPoint,actualViewMode.viewAttitude.GetForwardVector(),threadPool);	
+		partMan.Sort(actualViewMode.viewPoint,actualViewMode.viewAttitude.GetForwardVector(),threadPool);
 
 		auto &commonTexture=FsCommonTexture::GetCommonTexture();
 		commonTexture.GetParticleSpriteTexture();
@@ -7043,7 +7043,7 @@ void FsSimulation::SimDrawMap(const ActualViewMode &actualViewMode,const FsProje
 	{
 		drawPset=YSTRUE;
 	}
-	else if(FSDAYLIGHT==GetEnvironment() && 
+	else if(FSDAYLIGHT==GetEnvironment() &&
 	        cfgPtr->drawLightsInDaylight==YSTRUE &&
 	        weather->GetFogVisibility()<cfgPtr->drawLightsInDaylightVisibilityThr)
 	{
@@ -7070,7 +7070,7 @@ void FsSimulation::SimDrawAirplane(const ActualViewMode &actualViewMode,const Fs
 
 	// Create frustum for culling
 	FsCullingUtil::Frustum frustum = FsCullingUtil::CreateFrustumFromCurrentMatrix();
-	
+
 	FsAirplane *seeker;
 	double airRad;
 	YsVec3 airPos;
@@ -7086,7 +7086,7 @@ void FsSimulation::SimDrawAirplane(const ActualViewMode &actualViewMode,const Fs
 			// Skip if not visible in view frustum
 			// But always render if very close to the player
 			double distFromViewSq = (airPos-viewPoint).GetSquareLength();
-			if(distFromViewSq > (airRad*airRad)*16.0 && 
+			if(distFromViewSq > (airRad*airRad)*16.0 &&
 			   FsCullingUtil::IsSphereVisible(frustum, airPos, airRad) == YSFALSE)
 			{
 				continue;
@@ -7181,11 +7181,11 @@ void FsSimulation::SimDrawGround(const ActualViewMode &actualViewMode,const FsPr
 			// Get object radius and position for culling
 			double objRad = seeker->Prop().GetOutsideRadius();
 			YsVec3 objPos = seeker->GetPosition();
-			
+
 			// Skip if not visible in view frustum
 			// But always render if very close to the player
 			double distFromViewSq = (objPos-viewPoint).GetSquareLength();
-			if(distFromViewSq > (objRad*objRad)*16.0 && 
+			if(distFromViewSq > (objRad*objRad)*16.0 &&
 			   FsCullingUtil::IsSphereVisible(frustum, objPos, objRad) == YSFALSE)
 			{
 				continue;
@@ -7250,16 +7250,16 @@ void FsSimulation::SimDrawGround(const ActualViewMode &actualViewMode,const FsPr
 			// Get object radius and position for culling
 			double objRad = aircraftCarrierList[i]->Prop().GetOutsideRadius();
 			YsVec3 objPos = aircraftCarrierList[i]->GetPosition();
-			
+
 			// Skip if not visible in view frustum
 			// But always render if very close to the player
 			double distFromViewSq = (objPos-viewPoint).GetSquareLength();
-			if(distFromViewSq > (objRad*objRad)*16.0 && 
+			if(distFromViewSq > (objRad*objRad)*16.0 &&
 			   FsCullingUtil::IsSphereVisible(frustum, objPos, objRad) == YSFALSE)
 			{
 				continue;
 			}
-			
+
 			aircraftCarrierList[i]->Prop().GetAircraftCarrierProperty()->DrawBridge(viewMat);
 			aircraftCarrierList[i]->Prop().GetAircraftCarrierProperty()->DrawArrestingWire();
 		}
@@ -7672,7 +7672,7 @@ void FsSimulation::SimDrawForeground(const ActualViewMode &actualViewMode,const 
 
 	if(playerPlane!=NULL &&
 	   playerPlane->IsAlive()==YSTRUE &&
-	   (actualViewMode.actualViewMode==FSCOCKPITVIEW || 
+	   (actualViewMode.actualViewMode==FSCOCKPITVIEW ||
 	    actualViewMode.actualViewMode==FSADDITIONALAIRPLANEVIEW ||
 	    actualViewMode.actualViewMode==FSADDITIONALAIRPLANEVIEW_CABIN ||
 	    actualViewMode.actualViewMode==FSBOMBINGVIEW ||
@@ -7689,7 +7689,7 @@ void FsSimulation::SimDrawForeground(const ActualViewMode &actualViewMode,const 
 	}
 	else if(playerGround!=NULL &&
 	        playerGround->IsAlive()==YSTRUE &&
-	        (actualViewMode.actualViewMode==FSCOCKPITVIEW || 
+	        (actualViewMode.actualViewMode==FSCOCKPITVIEW ||
 	         actualViewMode.actualViewMode==FSADDITIONALAIRPLANEVIEW ||
 	         actualViewMode.actualViewMode==FSADDITIONALAIRPLANEVIEW_CABIN ||
 	         actualViewMode.actualViewMode==FSBOMBINGVIEW ||
@@ -7803,7 +7803,7 @@ void FsSimulation::SimDrawForeground(const ActualViewMode &actualViewMode,const 
 	{
 		int wid,hei;
 		FsGetWindowSize(wid,hei);
-		
+
 		const double vel=playerGround->Prop().GetVelocity();
 
 		const double kmph=YsUnitConv::MPStoKMPH(vel);
@@ -8299,7 +8299,7 @@ void FsSimulation::SimDrawHud3d(const YsVec3 &fakeViewPos,const YsAtt3 &instView
 
 				iy-=irad*2.0;
 			}
-			
+
 			{
 				const FsADFIndication &adf=cockpitIndicationSet.adf[0];
 				if(YSTRUE==adf.IsInRange() || YSTRUE==adf.IsTuned())
@@ -8745,7 +8745,7 @@ void FsSimulation::SimDrawGunAim(void) const
 	}
 
 	const FsAirplane *playerPlane=GetPlayerAirplane();
-	if(playerPlane!=NULL && 
+	if(playerPlane!=NULL &&
 	   playerPlane->Prop().GetHasPilotControlledTurret()==YSTRUE)
 	{
 		YsVec3 dir,aim,cock;
@@ -9602,9 +9602,9 @@ void FsSimulation::GetAircraftInFormation(YsArray <YsPair <FsAirplane *,YsVec3>,
 	FsAirplane *air=NULL;
 	while((air=FindNextAirplane(air))!=NULL)
 	{
-		if(air!=wingLeader && 
+		if(air!=wingLeader &&
 		   (air->airFlag&FSAIRFLAG_INDEPENDENT)==0 &&
-		   air->Prop().IsActive()==YSTRUE && 
+		   air->Prop().IsActive()==YSTRUE &&
 		   air->netType==FSNET_LOCAL)
 		{
 			auto fm=dynamic_cast <FsFormation *> (air->GetAutopilot());
@@ -10002,12 +10002,12 @@ void FsSimulation::SimDecideViewpointAndCheckIsInCloud(ActualViewMode &actualVie
 
 		const auto cameraEv=actualViewMode.viewAttitude.GetForwardVector();
 		const auto cameraUv=actualViewMode.viewAttitude.GetUpVector();
-		
+
 		const YsVec3 lightEv=-YsUnitVector(cfgPtr->lightSourceDirection);
 		const double cameraEvSimilarity=fabs(lightEv*cameraEv);
 		const double cameraUvSimilarity=fabs(lightEv*cameraUv);
 		const YsVec3 lightUv=(cameraEvSimilarity<cameraUvSimilarity ? cameraEv : cameraUv);
-		
+
 		lightViewAtt.SetTwoVector(lightEv,lightUv);
 
 
@@ -10125,13 +10125,13 @@ void FsSimulation::SimDecideViewpointAndCheckIsInCloud(ActualViewMode &actualVie
 			{
 				const YsVec3 push=cameraEv*lightVolumeProfile[i]*sinTheata;
 				const YsVec3 lightOrigin=actualViewMode.viewPoint+push-lightEv*lightPullProfile[i];
-			
+
 				actualViewMode.shadowViewMat[i].LoadIdentity();
 				actualViewMode.shadowViewMat[i].RotateXY(-lightViewAtt.b());
 				actualViewMode.shadowViewMat[i].RotateZY(-lightViewAtt.p());
 				actualViewMode.shadowViewMat[i].RotateXZ(-lightViewAtt.h());
 				actualViewMode.shadowViewMat[i].Translate(-lightOrigin);
-			
+
 				// Needs adjustment, and should use cascade-shadow map. -> Nah, forget about it.  Cascade shadow map doesn't work.
 				YsProjectionTransformation proj;
 				proj.SetProjectionMode(YsProjectionTransformation::ORTHOGONAL);
@@ -10146,7 +10146,7 @@ void FsSimulation::SimDecideViewpointAndCheckIsInCloud(ActualViewMode &actualVie
 		// Ad-hoc shadow transformation
 //		{
 //			const YsVec3 lightOrigin=actualViewMode.viewPoint-lightEv*200.0;
-//		
+//
 //			for(auto &m : actualViewMode.shadowViewMat)
 //			{
 //				m.LoadIdentity();
@@ -10155,7 +10155,7 @@ void FsSimulation::SimDecideViewpointAndCheckIsInCloud(ActualViewMode &actualVie
 //				m.RotateXZ(-lightViewAtt.h());
 //				m.Translate(-lightOrigin);
 //			}
-//		
+//
 //			// Needs adjustment, and should use cascade-shadow map.
 //			YsProjectionTransformation proj;
 //			proj.SetProjectionMode(YsProjectionTransformation::ORTHOGONAL);
@@ -10163,7 +10163,7 @@ void FsSimulation::SimDecideViewpointAndCheckIsInCloud(ActualViewMode &actualVie
 //			proj.SetOrthogonalProjectionHeight(150.0);
 //			proj.SetNearFar(0.0,1000.0);
 //			actualViewMode.shadowProjMat[0]=proj.GetProjectionMatrix();
-//		
+//
 //			proj.SetOrthogonalProjectionHeight(2000.0);
 //			proj.SetNearFar(0.0,5000.0);
 //			actualViewMode.shadowProjMat[1]=proj.GetProjectionMatrix();
@@ -11262,7 +11262,7 @@ YSBOOL FsSimulation::CheckContinueOneStep(void)
 			break;
 		}
 	}
-	
+
 	contDlg->KeyIn(ky,(YSBOOL)FsGetKeyState(FSKEY_SHIFT),(YSBOOL)FsGetKeyState(FSKEY_CTRL),(YSBOOL)FsGetKeyState(FSKEY_ALT));
 	contDlg->CharIn(c);
 
@@ -12339,11 +12339,20 @@ double FsSimulation::PassedTime(void)  // <- This function must wait at least 0.
 		lastTime=clk;
 	}
 	double passed=(double)(clk-lastTime)/1000.0;
-	if(passed<0.010)
+
+    // Target minimum time per step is now 0.005 seconds (for 200 Hz)
+	if(passed<0.0005) // MODIFIED
 	{
-		FsSleep(5);  // Let's give 10ms rest
+		// FsSleep(5) sleeps for 5ms (0.005s).
+        // If the target is 0.005s, and we've passed less,
+        // this sleep will likely bring us very close to or past the target.
+        // If target was less than 0.005s, we might need to adjust FsSleep's argument too.
+        // For 0.005s target, FsSleep(5) is fine, or even FsSleep(2) or FsSleep(1)
+        // followed by more precise spin-waiting. Let's keep FsSleep(5) for now,
+        // as it will try to yield for a duration that matches our new target.
+		FsSleep(1);
 	}
-	while(passed<0.010 && lastTime<=clk)
+	while(passed<0.0005 && lastTime<=clk) // MODIFIED
 	{
 		clk=FsSubSecondTimer();
 		passed=(double)(clk-lastTime)/1000.0;
@@ -12351,6 +12360,10 @@ double FsSimulation::PassedTime(void)  // <- This function must wait at least 0.
 
 	if(clk<lastTime)  // Underflow took place.
 	{
+        // This fallback value of 0.02 might still be relevant if the comment
+        // about 0.020s minimum is a hard requirement for other systems.
+        // If the whole system can now run faster, you might consider reducing this too.
+        // For now, let's leave it as it's an exceptional case.
 		passed=0.02;
 	}
 
@@ -12914,7 +12927,7 @@ double FsSimulation::TrueHeadingToInternalHeading(const double internalHeading) 
 double FsSimulation::InternalHeadingToMagnetic(const double trueHeading) const
 {
 	return TrueHeadingToMagneticHeading(InternalHeadingToTrueHeading(trueHeading));
-	// Why plus?  Internal hdg and world hdg are inverted.  
+	// Why plus?  Internal hdg and world hdg are inverted.
 	// By the way, in the conventional heading definition, (magnetic heading) = (true heading) - (variation)
 }
 
@@ -13314,7 +13327,7 @@ YSRESULT FsSimulation::FindNearbyBoardableVehicle(YsArray <const FsExistence *,1
 
 	for(int idx=0; idx<nearbyAir.GetN(); ++idx)
 	{
-		if(nearbyAir[idx]!=&from && 
+		if(nearbyAir[idx]!=&from &&
 		   FSGROUNDSTATIC==nearbyAir[idx]->Prop().GetFlightState() &&
 		   NULL==nearbyAir[idx]->GetAutopilot())
 		{
@@ -13328,8 +13341,8 @@ YSRESULT FsSimulation::FindNearbyBoardableVehicle(YsArray <const FsExistence *,1
 
 	for(int idx=0; idx<nearbyGnd.GetN(); ++idx)
 	{
-		if(nearbyGnd[idx]!=&from && 
-		   YSTRUE==nearbyGnd[idx]->Prop().IsAlive() && 
+		if(nearbyGnd[idx]!=&from &&
+		   YSTRUE==nearbyGnd[idx]->Prop().IsAlive() &&
 		   0!=(nearbyGnd[idx]->gndFlag & FSGNDFLAG_CANBEUSEROBJECT) &&
 		   YsTolerance>nearbyGnd[idx]->Prop().GetVelocity())
 		{
@@ -13911,4 +13924,3 @@ void FsSimulation::CloseChatDialog(void)
 		FsDisableIME();
 	}
 }
-
