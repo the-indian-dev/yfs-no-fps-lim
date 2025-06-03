@@ -23,7 +23,7 @@
 
 #include "fsguicommondialog.h"
 
-
+#include "../core/fsguiprogressdialog.h"
 
 #include "fsrunloop.h"
 
@@ -52,6 +52,7 @@ public:
 	class FsGuiChooseAircraft *chooseAircraftDialog;
 	class FsGuiInputNumberDialog *inputNumberDialog;
 	class FsGuiAirCombatDialog *airCombatDlg;
+	class FsGuiProgressDialog *progressDialog;
 
 	FsGuiMainCanvas();
 	~FsGuiMainCanvas();
@@ -92,6 +93,11 @@ public:
 	FsGuiChooseAircraft *StartSelectAircraftDialog(const char defAirplane[],int returnCode);
 
 	class FsGuiSelectMissionDialog *StartSelectMissionDialog(void);
+
+	void ShowProgressDialog(const wchar_t title[], const wchar_t iconText[]);
+	void UpdateProgress(int current, int total, const wchar_t filename[]);
+	void AddFailedFile(const wchar_t filename[]);
+	void HideProgressDialog();
 
 ////////////////////////////////////////////////////////////
 

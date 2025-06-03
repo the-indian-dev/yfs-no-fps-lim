@@ -22,8 +22,34 @@
 #include "fsnetconfig.h"
 
 #include "graphics/common/fsconsole.h"
+#include "fsworld.h"
+#include "gui/fsguimaincanvas.h"
+#include "fssimpleprogressdisplay.h"
 
 #include "fs.h"
+
+// Progress callback functions
+static void ProgressCallbackFunction(int current, int total, const wchar_t *description)
+{
+	printf("DEBUG: Progress callback called: %d/%d\n", current, total);
+	fsSimpleProgress.SetProgress(current, total, description);
+	fsSimpleProgress.Draw();
+}
+
+static void FileProgressCallbackFunction(const wchar_t *filename)
+{
+	printf("DEBUG: File progress callback: %ls\n", filename);
+	fsSimpleProgress.SetCurrentFile(filename);
+	fsSimpleProgress.Draw();
+	FsSleep(100); // Small delay to make file loading visible
+}
+
+static void ErrorCallbackFunction(const wchar_t *filename)
+{
+	printf("DEBUG: Error callback: %ls\n", filename);
+	fsSimpleProgress.AddFailedFile(filename);
+}
+
 #include "platform/common/fswindow.h"
 #include "graphics/common/fsopengl.h"
 #include "fsmenu.h"
@@ -369,9 +395,33 @@ YSBOOL FsLazyWindowApplication::StepByStepInitialization(void)
 		}
 		break;
 	case 2:
-		if(YSTRUE!=runLoopPtr->InitializeOneStep(FsWorld::InitializationOption()))
 		{
-			return YSFALSE; // Don't increment the counter until getting YSTRUE.
+			static YSBOOL progressShown = YSFALSE;
+			
+			if(YSFALSE == progressShown)
+			{
+				printf("DEBUG: Showing progress display\n");
+				fsSimpleProgress.Show(L"Loading Assets");
+				fsWorldProgressCallback = ProgressCallbackFunction;
+				fsWorldFileProgressCallback = FileProgressCallbackFunction;
+				fsWorldErrorCallback = ErrorCallbackFunction;
+				progressShown = YSTRUE;
+			}
+			
+			if(YSTRUE!=runLoopPtr->InitializeOneStep(FsWorld::InitializationOption()))
+			{
+				return YSFALSE; // Don't increment the counter until getting YSTRUE.
+			}
+			else
+			{
+				printf("DEBUG: Hiding progress display\n");
+				fsSimpleProgress.ShowFailedFiles();
+				fsSimpleProgress.Hide();
+				fsWorldProgressCallback = nullptr;
+				fsWorldFileProgressCallback = nullptr;
+				fsWorldErrorCallback = nullptr;
+				progressShown = YSFALSE;
+			}
 		}
 		break;
 	case 3:
