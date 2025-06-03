@@ -4,25 +4,25 @@ File Name: fswin32wrapper.cpp
 Copyright (c) 2017 Soji Yamakawa.  All rights reserved.
 http://www.ysflight.com
 
-Redistribution and use in source and binary forms, with or without modification, 
+Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
 
-1. Redistributions of source code must retain the above copyright notice, 
+1. Redistributions of source code must retain the above copyright notice,
    this list of conditions and the following disclaimer.
 
-2. Redistributions in binary form must reproduce the above copyright notice, 
-   this list of conditions and the following disclaimer in the documentation 
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
    and/or other materials provided with the distribution.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
-PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS 
-BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
-GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //////////////////////////////////////////////////////////// */
@@ -57,7 +57,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <direct.h>
 #include <gl/gl.h>
 #include <gl/glu.h>
-#include <gl/wglext.h>
 
 #include "fssimplewindow.h"
 #include "fswin32keymap.h"
@@ -147,6 +146,10 @@ static int exposure=0;
 
 static const char *WINCLASS="FsSimpleWindow_MainWindowClass";
 static const char *WINNAME="Main Window";
+
+
+// Typedef for wglSwapIntervalEXT function pointer
+typedef BOOL (APIENTRY *PFNWGLSWAPINTERVALEXTPROC)(int interval);
 
 
 void FsOpenWindow(const FsOpenWindowOption &opt)
@@ -636,6 +639,29 @@ static LRESULT WINAPI WindowFunc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp)
 		YsSetPixelFormat(fsWin32Internal.hDC);
 		fsWin32Internal.hRC=wglCreateContext(fsWin32Internal.hDC);
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+
+		// Try to disable VSync
+		PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT =
+			(PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+
+		if (wglSwapIntervalEXT)
+		{
+			if (wglSwapIntervalEXT(0)) // 0 to disable VSync, 1 to enable
+			{
+				printf("VSync disabled via wglSwapIntervalEXT(0).\n");
+			}
+			else
+			{
+				// This might happen if, for example, the driver forces VSync ON.
+				printf("wglSwapIntervalEXT(0) called but failed to disable VSync (driver override?).\n");
+			}
+		}
+		else
+		{
+			printf("WGL_EXT_swap_control not supported. VSync status depends on driver default.\n");
+		}
+		// End VSync disable attempt
+
 		if(0==doubleBuffer)
 		{
 			glDrawBuffer(GL_FRONT);
@@ -1073,13 +1099,6 @@ static void InitializeOpenGL(HWND wnd)
 	glPointSize(1);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glColor3ub(0,0,0);
-	
-	// Disable VSync to unlock framerate (attempt to use wglSwapIntervalEXT)
-	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
-	if(wglSwapIntervalEXT != NULL)
-	{
-		wglSwapIntervalEXT(0);  // 0 = disable VSync
-	}
 }
 
 int FsGetNumCurrentTouch(void)
@@ -1123,7 +1142,7 @@ FsWin32WaitInTheLastMoment::~FsWin32WaitInTheLastMoment()
 {
 	// This function will wait for 100ms before the program terminates.
 	// If I let Windows destroy all the resources, this wait is apparently necessary, or
-	// Windows falls into the dead lock.  
+	// Windows falls into the dead lock.
 	// Well, it's my sloppy programming.  :-P
 	FsSleep(100);
 }
