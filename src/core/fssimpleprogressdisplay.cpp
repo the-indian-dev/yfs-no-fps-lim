@@ -118,22 +118,26 @@ void FsSimpleProgressDisplay::Draw()
     {
         return;
     }
-
+    
     int winWid, winHei;
     FsGetWindowSize(winWid, winHei);
-
+    
+    // Save current OpenGL state
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
     glPushMatrix();
     glLoadIdentity();
-
+    
     // Set up 2D projection
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
     glOrtho(0, winWid, winHei, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
-
+    
     // Disable depth testing for overlay
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -317,15 +321,13 @@ void FsSimpleProgressDisplay::Draw()
     }
     printf(" | %s\n", percentStr.Txt());
 
-    // Restore GL state
-    glEnable(GL_DEPTH_TEST);
-    glDisable(GL_BLEND);
-
+    // Restore GL state completely
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
-
+    glPopAttrib();
+    
     // Swap buffers to show the progress
     FsSwapBuffers();
 }
