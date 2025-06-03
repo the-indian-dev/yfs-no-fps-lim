@@ -1,6 +1,14 @@
 #include "fsculling.h"
 #include <ysclass.h>
 #include <ysdef.h>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
 #define FSSIMPLEWINDOW_DONT_INCLUDE_OPENGL_HEADERS
 #include <fssimplewindow.h>
 
