@@ -415,7 +415,32 @@ YSBOOL FsLazyWindowApplication::StepByStepInitialization(void)
 			else
 			{
 				printf("DEBUG: Hiding progress display\n");
-				fsSimpleProgress.ShowFailedFiles();
+				
+				// Show failed files using message box if any
+				if(fsSimpleProgress.failedFiles.GetN() > 0)
+				{
+					YsWString message;
+					message.Set(L"The following asset files failed to load:\n\n");
+					
+					for (YSSIZE_T i = 0; i < fsSimpleProgress.failedFiles.GetN() && i < 15; i++)
+					{
+						message.Append(fsSimpleProgress.failedFiles[i]);
+						message.Append(L"\n");
+					}
+					
+					if (fsSimpleProgress.failedFiles.GetN() > 15)
+					{
+						YsString moreStr;
+						moreStr.Printf("\n... and %d more files", (int)(fsSimpleProgress.failedFiles.GetN() - 15));
+						
+						YsWString moreText;
+						moreText.SetUTF8String(moreStr);
+						message.Append(moreText);
+					}
+					
+					mainCanvasPtr->StartMessageBox(L"Asset Loading Errors", message, L"OK", nullptr, 0, 0);
+				}
+				
 				fsSimpleProgress.Hide();
 				fsWorldProgressCallback = nullptr;
 				fsWorldFileProgressCallback = nullptr;

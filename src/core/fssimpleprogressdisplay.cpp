@@ -14,6 +14,8 @@ FsSimpleProgressDisplay::FsSimpleProgressDisplay()
     isVisible = YSFALSE;
     currentFileName.Set(L"");
     failedFiles.Clear();
+    logoTexture = 0;
+    logoLoaded = YSFALSE;
 }
 
 FsSimpleProgressDisplay::~FsSimpleProgressDisplay()
@@ -30,6 +32,47 @@ void FsSimpleProgressDisplay::Show(const wchar_t title[])
     currentStep = 0;
     totalSteps = 1;
     failedFiles.Clear();
+
+    // Try to load logo image
+    if(YSFALSE == logoLoaded)
+    {
+        // Try different common logo filenames
+        const char* logoFiles[] = {
+            "misc/logo.png",
+            "misc/icon.png",
+            "misc/ysflight.png",
+            "bitmap/logo.png",
+            "bitmap/icon.png",
+            NULL
+        };
+
+        for(int i = 0; logoFiles[i] != NULL && YSFALSE == logoLoaded; i++)
+        {
+            if(YSOK == logoBmp.LoadPng(logoFiles[i]))
+            {
+                printf("DEBUG: Loaded logo: %s\n", logoFiles[i]);
+
+                // Create OpenGL texture
+                glGenTextures(1, &logoTexture);
+                glBindTexture(GL_TEXTURE_2D, logoTexture);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+                // Upload texture data
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                           logoBmp.GetWidth(), logoBmp.GetHeight(), 0,
+                           GL_RGBA, GL_UNSIGNED_BYTE, logoBmp.GetRGBABitmapPointer());
+
+                logoLoaded = YSTRUE;
+                printf("DEBUG: Logo texture created\n");
+            }
+        }
+
+        if(YSFALSE == logoLoaded)
+        {
+            printf("DEBUG: No logo file found, using simple icon\n");
+        }
+    }
 }
 
 void FsSimpleProgressDisplay::Hide()
@@ -43,7 +86,7 @@ void FsSimpleProgressDisplay::SetProgress(int current, int total, const wchar_t 
     printf("DEBUG: FsSimpleProgressDisplay::SetProgress %d/%d: %ls\n", current, total, description);
     currentStep = current;
     totalSteps = total;
-    
+
     YsWString newText;
     newText.Set(L"Loading: ");
     newText.Append(description);
@@ -65,36 +108,8 @@ void FsSimpleProgressDisplay::AddFailedFile(const wchar_t filename[])
 
 void FsSimpleProgressDisplay::ShowFailedFiles()
 {
-    if (failedFiles.GetN() > 0)
-    {
-        printf("DEBUG: Showing %d failed files\n", (int)failedFiles.GetN());
-        
-        YsWString message;
-        message.Set(L"The following asset files failed to load:\n\n");
-        
-        for (YSSIZE_T i = 0; i < failedFiles.GetN() && i < 15; i++)
-        {
-            message.Append(failedFiles[i]);
-            message.Append(L"\n");
-        }
-        
-        if (failedFiles.GetN() > 15)
-        {
-            YsString moreStr;
-            moreStr.Printf("\n... and %d more files", (int)(failedFiles.GetN() - 15));
-            
-            YsWString moreText;
-            moreText.SetUTF8String(moreStr);
-            message.Append(moreText);
-        }
-        
-        // Convert to char for simple display
-        YsString messageStr;
-        messageStr.EncodeUTF8<wchar_t>(message);
-        printf("Asset Loading Errors:\n%s\n", messageStr.Txt());
-        
-        // TODO: Could show this in a proper dialog here
-    }
+    // This function will be called from the main application
+    // The main application will handle showing the message box
 }
 
 void FsSimpleProgressDisplay::Draw()
@@ -103,25 +118,25 @@ void FsSimpleProgressDisplay::Draw()
     {
         return;
     }
-    
+
     int winWid, winHei;
     FsGetWindowSize(winWid, winHei);
-    
+
     glPushMatrix();
     glLoadIdentity();
-    
+
     // Set up 2D projection
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
     glOrtho(0, winWid, winHei, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
-    
+
     // Disable depth testing for overlay
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
+
     // Draw semi-transparent background
     glColor4f(0.0f, 0.0f, 0.0f, 0.7f);
     glBegin(GL_QUADS);
@@ -130,13 +145,13 @@ void FsSimpleProgressDisplay::Draw()
     glVertex2f(winWid, winHei);
     glVertex2f(0, winHei);
     glEnd();
-    
+
     // Calculate dialog position (center of screen)
-    int dialogW = 500;
-    int dialogH = 160;
+    int dialogW = 520;
+    int dialogH = 180;
     int dialogX = (winWid - dialogW) / 2;
     int dialogY = (winHei - dialogH) / 2;
-    
+
     // Draw dialog background
     glColor4f(0.9f, 0.9f, 0.9f, 0.95f);
     glBegin(GL_QUADS);
@@ -145,27 +160,75 @@ void FsSimpleProgressDisplay::Draw()
     glVertex2f(dialogX + dialogW, dialogY + dialogH);
     glVertex2f(dialogX, dialogY + dialogH);
     glEnd();
-    
-    // Draw aircraft icon (simple airplane shape)
-    int iconX = dialogX + 20;
-    int iconY = dialogY + 15;
-    int iconSize = 24;
-    
-    glColor4f(0.2f, 0.4f, 0.8f, 1.0f);
-    glLineWidth(3.0f);
-    glBegin(GL_LINE_STRIP);
-    // Simple airplane outline
-    glVertex2f(iconX + iconSize/2, iconY);                    // nose
-    glVertex2f(iconX + iconSize/2, iconY + iconSize*0.7f);    // body
-    glVertex2f(iconX, iconY + iconSize*0.5f);                 // left wing
-    glVertex2f(iconX + iconSize/2, iconY + iconSize*0.7f);    // back to body
-    glVertex2f(iconX + iconSize, iconY + iconSize*0.5f);      // right wing
-    glVertex2f(iconX + iconSize/2, iconY + iconSize*0.7f);    // back to body
-    glVertex2f(iconX + iconSize*0.3f, iconY + iconSize);      // left tail
-    glVertex2f(iconX + iconSize/2, iconY + iconSize*0.7f);    // back to body
-    glVertex2f(iconX + iconSize*0.7f, iconY + iconSize);      // right tail
-    glEnd();
-    
+
+    // Draw logo or aircraft icon
+    int iconX = dialogX + 250;
+    int iconY = dialogY - 30;
+    int maxIconSize = 200;
+
+    if(logoLoaded && logoTexture != 0)
+    {
+        // Calculate proper dimensions preserving aspect ratio
+        int imgW = logoBmp.GetWidth();
+        int imgH = logoBmp.GetHeight();
+        int drawW, drawH;
+
+        if(imgW > imgH)
+        {
+            // Wider than tall - fit to width
+            drawW = maxIconSize;
+            drawH = (imgH * maxIconSize) / imgW;
+        }
+        else
+        {
+            // Taller than wide - fit to height
+            drawH = maxIconSize;
+            drawW = (imgW * maxIconSize) / imgH;
+        }
+
+        // Center the image in the icon area
+        int drawX = iconX + (maxIconSize - drawW) / 2;
+        int drawY = iconY + (maxIconSize - drawH) / 2;
+
+        // Draw logo texture with preserved aspect ratio
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, logoTexture);
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+        glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f); glVertex2f(drawX, drawY);
+        glTexCoord2f(1.0f, 0.0f); glVertex2f(drawX + drawW, drawY);
+        glTexCoord2f(1.0f, 1.0f); glVertex2f(drawX + drawW, drawY + drawH);
+        glTexCoord2f(0.0f, 1.0f); glVertex2f(drawX, drawY + drawH);
+        glEnd();
+
+        glDisable(GL_TEXTURE_2D);
+
+        printf("DEBUG: Drew logo %dx%d scaled to %dx%d\n", imgW, imgH, drawW, drawH);
+    }
+    else
+    {
+        // Draw simple aircraft icon
+        int iconSize = 32; // Bigger simple icon to match logo area
+        int drawX = iconX + (maxIconSize - iconSize) / 2;
+        int drawY = iconY + (maxIconSize - iconSize) / 2;
+
+        glColor4f(0.2f, 0.4f, 0.8f, 1.0f);
+        glLineWidth(3.0f);
+        glBegin(GL_LINE_STRIP);
+        // Simple airplane outline
+        glVertex2f(drawX + iconSize/2, drawY);                    // nose
+        glVertex2f(drawX + iconSize/2, drawY + iconSize*0.7f);    // body
+        glVertex2f(drawX, drawY + iconSize*0.5f);                 // left wing
+        glVertex2f(drawX + iconSize/2, drawY + iconSize*0.7f);    // back to body
+        glVertex2f(drawX + iconSize, drawY + iconSize*0.5f);      // right wing
+        glVertex2f(drawX + iconSize/2, drawY + iconSize*0.7f);    // back to body
+        glVertex2f(drawX + iconSize*0.3f, drawY + iconSize);      // left tail
+        glVertex2f(drawX + iconSize/2, drawY + iconSize*0.7f);    // back to body
+        glVertex2f(drawX + iconSize*0.7f, drawY + iconSize);      // right tail
+        glEnd();
+    }
+
     // Draw dialog border
     glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
     glLineWidth(2.0f);
@@ -175,13 +238,13 @@ void FsSimpleProgressDisplay::Draw()
     glVertex2f(dialogX + dialogW, dialogY + dialogH);
     glVertex2f(dialogX, dialogY + dialogH);
     glEnd();
-    
-    // Draw progress bar background
-    int barX = dialogX + 20;
-    int barY = dialogY + 110;
-    int barW = dialogW - 40;
+
+    // Draw progress bar background (make room for icon on left)
+    int barX = dialogX + 100;
+    int barY = dialogY + 130;
+    int barW = dialogW - 120;
     int barH = 20;
-    
+
     glColor4f(0.9f, 0.9f, 0.9f, 1.0f);
     glBegin(GL_QUADS);
     glVertex2f(barX, barY);
@@ -189,13 +252,13 @@ void FsSimpleProgressDisplay::Draw()
     glVertex2f(barX + barW, barY + barH);
     glVertex2f(barX, barY + barH);
     glEnd();
-    
+
     // Draw progress bar fill
     if(totalSteps > 0)
     {
         float progress = (float)(currentStep + 1) / (float)totalSteps;
         int fillW = (int)(barW * progress);
-        
+
         glColor4f(0.2f, 0.6f, 0.2f, 1.0f);
         glBegin(GL_QUADS);
         glVertex2f(barX, barY);
@@ -204,7 +267,7 @@ void FsSimpleProgressDisplay::Draw()
         glVertex2f(barX, barY + barH);
         glEnd();
     }
-    
+
     // Draw progress bar border
     glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
     glLineWidth(1.0f);
@@ -214,16 +277,16 @@ void FsSimpleProgressDisplay::Draw()
     glVertex2f(barX + barW, barY + barH);
     glVertex2f(barX, barY + barH);
     glEnd();
-    
+
     // Draw text using simple raster positioning
     glColor4f(0.1f, 0.1f, 0.1f, 1.0f);
-    
+
     // Convert wide strings to ASCII for simple rendering
     YsString titleStr, progressStr, currentFileStr, percentStr;
     titleStr.EncodeUTF8<wchar_t>(currentText);
     progressStr.EncodeUTF8<wchar_t>(progressText);
     currentFileStr.EncodeUTF8<wchar_t>(currentFileName);
-    
+
     if(totalSteps > 0)
     {
         int percent = ((currentStep + 1) * 100) / totalSteps;
@@ -233,7 +296,19 @@ void FsSimpleProgressDisplay::Draw()
     {
         percentStr.Set("0%");
     }
-    
+
+    // Add title text area (next to icon)
+    int titleX = dialogX + 100;
+    int titleY = dialogY + 25;
+
+    // Add current file text area
+    int fileX = dialogX + 100;
+    int fileY = dialogY + 50;
+
+    // Add status text area
+    int statusX = dialogX + 100;
+    int statusY = dialogY + 75;
+
     // Print debug info to console since OpenGL text rendering is complex
     printf("Progress: %s | %s", titleStr.Txt(), progressStr.Txt());
     if(currentFileStr.Strlen() > 0)
@@ -241,16 +316,16 @@ void FsSimpleProgressDisplay::Draw()
         printf(" | Current: %s", currentFileStr.Txt());
     }
     printf(" | %s\n", percentStr.Txt());
-    
+
     // Restore GL state
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
-    
+
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
-    
+
     // Swap buffers to show the progress
     FsSwapBuffers();
 }

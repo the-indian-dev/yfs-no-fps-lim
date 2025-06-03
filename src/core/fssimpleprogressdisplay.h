@@ -13,12 +13,13 @@ private:
     int currentStep;
     int totalSteps;
     YSBOOL isVisible;
-    YsArray<YsWString> failedFiles;
     YsBitmap logoBmp;
     unsigned int logoTexture;
     YSBOOL logoLoaded;
     
 public:
+    YsArray<YsWString> failedFiles;
+    
     FsSimpleProgressDisplay();
     virtual ~FsSimpleProgressDisplay();
     
