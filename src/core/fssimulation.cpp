@@ -7086,7 +7086,7 @@ void FsSimulation::SimDrawAirplane(const ActualViewMode &actualViewMode,const Fs
 			// Skip if not visible in view frustum
 			// But always render if very close to the player
 			double distFromViewSq = (airPos-viewPoint).GetSquareLength();
-			if(distFromViewSq > (airRad*airRad)*16.0 &&
+			if(distFromViewSq > (airRad*airRad)*1600.0 &&
 			   FsCullingUtil::IsSphereVisible(frustum, airPos, airRad) == YSFALSE)
 			{
 				continue;
