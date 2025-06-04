@@ -78,12 +78,16 @@ jobs:
       shell: cmd # Using cmd for Windows
       run: |
         echo "Configuring CMake for Windows (MSVC)"
+        echo "Attempting to link with opengl32.lib and glu32.lib. For a permanent fix, update your CMakeLists.txt to find and link OpenGL."
+        set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
         cmake -S src ^
           -B ${{ steps.strings.outputs.build-output-dir }} ^
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} ^
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} ^
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^
-          -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+          -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
+          -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
           :: No -Wno-incompatible-pointer-types for MSVC by default.
 
     - name: Build
@@ -93,20 +97,15 @@ jobs:
         --parallel
 
     - name: Copy icon (Example - if not handled by CMake)
-      # This step ensures the icon is in the expected location before zipping,
-      # especially if your CMake doesn't place it in build/main/misc.
-      # Your build.sh implies `build/main/misc/` is the target for the icon.
       if: success()
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
         ICON_SOURCE_PATH="src/misc/icon.png"
-        # Ensure the icon destination is within the directory we plan to zip.
         ICON_DEST_DIR="${{ steps.strings.outputs.main-output-dir }}/misc"
 
         if [ -f "$ICON_SOURCE_PATH" ]; then
           echo "Icon found at $ICON_SOURCE_PATH. Attempting to copy..."
-          # Ensure destination directory exists (mkdir -p is idempotent)
           mkdir -p "$ICON_DEST_DIR"
           cp "$ICON_SOURCE_PATH" "$ICON_DEST_DIR/icon.png"
           echo "Icon copied to $ICON_DEST_DIR/icon.png"
@@ -119,13 +118,10 @@ jobs:
       run: ctest --build-config ${{ matrix.build_type }} -V
 
     - name: Upload 'main' directory artifact
-      if: success() # Only run if build and tests (if any run before this) are successful
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: Main-Build-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
-        # Path to the directory to be zipped and uploaded.
-        # This will create a zip file containing the 'main' directory and its contents.
         path: ${{ steps.strings.outputs.main-output-dir }}
-        # Options: warn (default), error, ignore
         if-no-files-found: warn
         retention-days: 7
