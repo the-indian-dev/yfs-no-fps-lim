@@ -49,19 +49,26 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgl1-mesa-dev
+        sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev # Added libglu1-mesa-dev
 
     - name: Configure CMake
-      shell: bash # Use bash for the conditional flag logic
+      shell: bash # Crucial for consistent shell behavior, especially for conditional logic
       run: |
-        EXTRA_C_FLAGS=""
-        EXTRA_CXX_FLAGS=""
+        # Initialize flags
+        C_COMPILER_FLAGS=""
+        CXX_COMPILER_FLAGS=""
 
         # Apply -Wno-incompatible-pointer-types only for GCC and Clang
         if [[ "${{ matrix.c_compiler }}" == "gcc" || "${{ matrix.c_compiler }}" == "clang" ]]; then
-          EXTRA_C_FLAGS="-Wno-incompatible-pointer-types"
-          EXTRA_CXX_FLAGS="-Wno-incompatible-pointer-types" # Assuming you want this for C++ too with these compilers
+          C_COMPILER_FLAGS="-Wno-incompatible-pointer-types"
+          # Assuming you want this for C++ too with these compilers.
+          # Note: -Wno-incompatible-pointer-types is primarily a C warning.
+          # Verify if it's relevant/valid for your C++ code with these compilers.
+          CXX_COMPILER_FLAGS="-Wno-incompatible-pointer-types"
         fi
+
+        echo "Using C_COMPILER_FLAGS: '$C_COMPILER_FLAGS'"
+        echo "Using CXX_COMPILER_FLAGS: '$CXX_COMPILER_FLAGS'"
 
         cmake \
           -S ${{ github.workspace }}/src \
@@ -69,8 +76,8 @@ jobs:
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-          -DCMAKE_C_FLAGS"${EXTRA_C_FLAGS:+=$EXTRA_C_FLAGS}" \
-          -DCMAKE_CXX_FLAGS"${EXTRA_CXX_FLAGS:+=$EXTRA_CXX_FLAGS}" \
+          -DCMAKE_C_FLAGS="$C_COMPILER_FLAGS" \
+          -DCMAKE_CXX_FLAGS="$CXX_COMPILER_FLAGS" \
           -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
@@ -86,8 +93,10 @@ jobs:
       if: success()
       shell: bash
       run: |
-        ICON_SOURCE_PATH="${{ github.workspace }}/src/misc/icon.png" # Assuming icon is in src/misc
-        ICON_DEST_DIR="${{ steps.strings.outputs.build-output-dir }}/main/misc"
+        # Assuming your CMake source is `${{ github.workspace }}/src`
+        # and the icon is located at `src/misc/icon.png`
+        ICON_SOURCE_PATH="${{ github.workspace }}/src/misc/icon.png"
+        ICON_DEST_DIR="${{ steps.strings.outputs.build-output-dir }}/main/misc" # As per your build.sh
 
         if [ -f "$ICON_SOURCE_PATH" ]; then
           echo "Icon found at $ICON_SOURCE_PATH. Attempting to copy..."
