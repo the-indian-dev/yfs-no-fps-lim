@@ -1947,7 +1947,7 @@ YSRESULT FsWorld::LoadInternal(const wchar_t fn[],const YsVec3 &fieldPos,const Y
 							sim->SetFirstPlayerYfsIdent(objType,yfsIdent);
 						}
 						break;
-					case 50: // "CANCONTI" 
+					case 50: // "CANCONTI"
 						if(2<=args.GetN())
 						{
 							auto canContinue=YsStrToBool(args[1]);
@@ -2498,7 +2498,7 @@ YSRESULT FsWorld::LoadAirplaneTemplateList(const wchar_t rootDir[],const wchar_t
 		YsString cStr;
 		cStr.EncodeUTF8 <wchar_t> (ful);
 		// fsConsole.Printf("%s",cStr.Txt());  // Commented out for progress dialog
-		
+
 		// Report current file being loaded
 		if(nullptr != fsWorldFileProgressCallback)
 		{
@@ -2833,7 +2833,7 @@ YSRESULT FsWorld::LoadGroundTemplateList(const wchar_t rootDir[],const wchar_t s
 		YsString cStr;
 		cStr.EncodeUTF8 <wchar_t> (ful);
 		// fsConsole.Printf("%s",cStr.Txt());  // Commented out for progress dialog
-		
+
 		// Report current file being loaded
 		if(nullptr != fsWorldFileProgressCallback)
 		{
@@ -2936,7 +2936,7 @@ YSRESULT FsWorld::LoadFieldTemplateList(const wchar_t rootDir[],const wchar_t su
 		YsString cStr;
 		cStr.EncodeUTF8 <wchar_t> (ful);
 		// fsConsole.Printf("%s",(const char *)cStr.Txt());  // Commented out for progress dialog
-		
+
 		// Report current file being loaded
 		if(nullptr != fsWorldFileProgressCallback)
 		{
@@ -5554,7 +5554,7 @@ YSRESULT FsWorld::PrepareAcrobat(FsDemoModeInfo &info,const char airType[],int a
 				int n,action;
 
 				n=(acroType==FSACRO_BOMBBURSTDOWN4SHIP ? 4 : 6);
-				action=(acroType==FSACRO_BOMBBURSTDOWN4SHIP ? 
+				action=(acroType==FSACRO_BOMBBURSTDOWN4SHIP ?
 				        FsAirshowControl::BOMBBURSTDOWN4SHIP : FsAirshowControl::BOMBBURSTDOWN6SHIP);
 
 				startPos.SetY(330.0);
@@ -8193,4 +8193,3 @@ void FsWorld::AdjustPrecisionOfFlightRecord(const double &precPos,const double &
 		sim->AdjustPrecisionOfFlightRecord(precPos,precAng);
 	}
 }
-
