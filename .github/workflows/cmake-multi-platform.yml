@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         build_type: [Release] # You can add Debug, RelWithDebInfo, etc.
-        # Define specific configurations to avoid invalid combinations
+        c_compiler: [gcc, clang, cl]
         include:
           - os: windows-latest
             c_compiler: cl
@@ -27,9 +27,13 @@ jobs:
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
-        # No 'exclude' needed if 'include' defines all valid combinations correctly.
-        # The original 'exclude' logic was fine, but this 'include'-only approach is often cleaner
-        # if you don't have a primary matrix axis that generates many invalid combinations.
+        exclude:
+          - os: windows-latest
+            c_compiler: gcc
+          - os: windows-latest
+            c_compiler: clang
+          - os: ubuntu-latest
+            c_compiler: cl
 
     steps:
     - name: Checkout repository
@@ -37,46 +41,52 @@ jobs:
 
     - name: Set reusable strings
       id: strings
-      shell: bash # bash is available on all runners (via Git Bash on Windows)
+      shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-        echo "source-dir=${{ github.workspace }}/src" >> "$GITHUB_OUTPUT" # Assuming CMakeLists.txt is in 'src'
+
+    - name: Install OpenGL development libraries (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev
 
     - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory.
-      # CMAKE_BUILD_TYPE is passed for single-configuration generators (Makefiles, Ninja).
-      # For multi-configuration generators (Visual Studio), it's typically set at build time.
-      run: >
-        cmake
-        -S ${{ steps.strings.outputs.source-dir }}
-        -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types"
-        -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types"
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 # Consider setting this in your CMakeLists.txt instead
+      shell: bash # Use bash for the conditional flag logic
+      run: |
+        EXTRA_C_FLAGS=""
+        EXTRA_CXX_FLAGS=""
+
+        # Apply -Wno-incompatible-pointer-types only for GCC and Clang
+        if [[ "${{ matrix.c_compiler }}" == "gcc" || "${{ matrix.c_compiler }}" == "clang" ]]; then
+          EXTRA_C_FLAGS="-Wno-incompatible-pointer-types"
+          EXTRA_CXX_FLAGS="-Wno-incompatible-pointer-types" # Assuming you want this for C++ too with these compilers
+        fi
+
+        cmake \
+          -S ${{ github.workspace }}/src \
+          -B ${{ steps.strings.outputs.build-output-dir }} \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_C_FLAGS"${EXTRA_C_FLAGS:+=$EXTRA_C_FLAGS}" \
+          -DCMAKE_CXX_FLAGS"${EXTRA_CXX_FLAGS:+=$EXTRA_CXX_FLAGS}" \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
-      # Build your program with the given configuration.
-      # --config is needed for multi-config generators (e.g., Visual Studio on Windows).
-      # --parallel enables parallel builds for faster compilation.
       run: >
         cmake --build ${{ steps.strings.outputs.build-output-dir }}
         --config ${{ matrix.build_type }}
         --parallel
 
-    - name: Copy icon (Example - if needed for tests/artifacts)
+    - name: Copy icon (Example)
       # This step replicates `cp misc/icon.png build/main/misc/` from your build.sh
-      # It assumes:
-      # 1. The icon is at `src/misc/icon.png` relative to your project root.
-      # 2. Your build process creates a `main/misc` subdirectory within the build output directory.
-      # It's generally better to handle file installation using CMake's `install()` commands
-      # or `file(COPY ...)` commands within your CMakeLists.txt.
-      if: success() # Only run if build succeeded
-      shell: bash # Using bash for cross-platform `cp` and `mkdir -p`
+      # Assumes icon is at `src/misc/icon.png` and build creates `main/misc` in build dir.
+      # Consider handling this within CMakeLists.txt for better practice.
+      if: success()
+      shell: bash
       run: |
-        ICON_SOURCE_PATH="${{ steps.strings.outputs.source-dir }}/misc/icon.png"
+        ICON_SOURCE_PATH="${{ github.workspace }}/src/misc/icon.png" # Assuming icon is in src/misc
         ICON_DEST_DIR="${{ steps.strings.outputs.build-output-dir }}/main/misc"
 
         if [ -f "$ICON_SOURCE_PATH" ]; then
@@ -85,13 +95,11 @@ jobs:
           cp "$ICON_SOURCE_PATH" "$ICON_DEST_DIR/icon.png"
           echo "Icon copied to $ICON_DEST_DIR/icon.png"
         else
-          echo "Icon not found at $ICON_SOURCE_PATH. Skipping copy."
-          # You might want to fail the job if the icon is critical:
+          echo "Warning: Icon not found at $ICON_SOURCE_PATH. Skipping copy."
+          # To fail if icon is critical:
           # exit 1
         fi
 
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration.
-      # --build-config (or CTEST_CONFIGURATION_TYPE) is needed for multi-config generators.
-      run: ctest --build-config ${{ matrix.build_type }} -V # -V for verbose output
+      run: ctest --build-config ${{ matrix.build_type }} -V
