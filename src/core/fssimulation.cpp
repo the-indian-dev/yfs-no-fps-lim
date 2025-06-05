@@ -3879,6 +3879,7 @@ void FsSimulation::SimMove(const double &dt)
 	particleStore.Move(dt,weather->GetWind());
 
 	weather->WeatherTransition(dt);
+	weather->UpdateRain(dt);
 
 	airplane=NULL;
 	while((airplane=FindNextAirplane(airplane))!=NULL)
@@ -6979,17 +6980,32 @@ void FsSimulation::SimDrawBackground(const ActualViewMode &actualViewMode,const 
 
 	YSBOOL gndSpecular=this->gndSpecular;
 	YsColor horizonColor;
-	switch(env)
+	
+	// Apply weather-specific color modifications
+	if(weather->GetWeatherType() == FSWEATHER_RAIN)
 	{
-	case FSNIGHT:
-		gnd.SetDoubleRGB(gnd.Rd()*0.1,gnd.Gd()*0.1,gnd.Bd()*0.1);
-		sky.SetDoubleRGB(sky.Rd()*0.1,sky.Gd()*0.1,sky.Bd()*0.1);
-		horizonColor=YsGrayScale(0.1);
-		gndSpecular=YSFALSE;
-		break;
-	case FSDAYLIGHT:
-		horizonColor.SetDoubleRGB(0.7,0.7,0.7);
-		break;
+		// Override with greyish colors for rain
+		const auto &weatherSkyColor = weather->GetSkyColor();
+		const auto &weatherFogColor = weather->GetFogColor();
+		sky.SetDoubleRGB(weatherSkyColor.x(), weatherSkyColor.y(), weatherSkyColor.z());
+		gnd.SetDoubleRGB(weatherFogColor.x() * 0.6, weatherFogColor.y() * 0.6, weatherFogColor.z() * 0.6);
+		horizonColor.SetDoubleRGB(weatherFogColor.x() * 0.8, weatherFogColor.y() * 0.8, weatherFogColor.z() * 0.8);
+		gndSpecular=YSFALSE;  // No specular reflection in rain
+	}
+	else
+	{
+		switch(env)
+		{
+		case FSNIGHT:
+			gnd.SetDoubleRGB(gnd.Rd()*0.1,gnd.Gd()*0.1,gnd.Bd()*0.1);
+			sky.SetDoubleRGB(sky.Rd()*0.1,sky.Gd()*0.1,sky.Bd()*0.1);
+			horizonColor=YsGrayScale(0.1);
+			gndSpecular=YSFALSE;
+			break;
+		case FSDAYLIGHT:
+			horizonColor.SetDoubleRGB(0.7,0.7,0.7);
+			break;
+		}
 	}
 
 	if(weather->GetFog()==YSTRUE)
@@ -7032,6 +7048,14 @@ void FsSimulation::SimDrawBackground(const ActualViewMode &actualViewMode,const 
 			div=50;
 		}
 		groundSky->DrawGroundMesh(actualViewMode.viewPoint,actualViewMode.viewAttitude,gnd,div,gndSpecular);
+	}
+	
+	// Draw rain effects if it's raining
+	if(weather->IsRaining() == YSTRUE)
+	{
+		YsVec3 cameraDir;
+		actualViewMode.viewAttitude.Mul(cameraDir, YsVec3(0.0, 0.0, -1.0));
+		weather->DrawRain(actualViewMode.viewPoint, cameraDir);
 	}
 }
 

@@ -513,6 +513,12 @@ enum
 	FSCLOUDLAYER_OVERCAST
 };
 
+enum FSWEATHERTYPE
+{
+	FSWEATHER_CLEAR,
+	FSWEATHER_RAIN
+};
+
 // Weather <<
 
 

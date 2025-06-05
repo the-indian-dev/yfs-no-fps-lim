@@ -1791,6 +1791,7 @@ void FsNewFlightEnvironmentInfo::Initialize(void)
 	windDir=0.0;
 	windSpd=0.0;
 	dayOrNight=FSDAYLIGHT;
+	weatherType=FSWEATHER_CLEAR;
 	fog=YSTRUE;
 	fogVisibility=20000.0;
 	cloudLayer.Clear();

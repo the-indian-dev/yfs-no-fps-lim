@@ -73,6 +73,8 @@ FsNewSimulationDialogTemplate::FsNewSimulationDialogTemplate()
 
 	dayNight[0]=NULL;
 	dayNight[1]=NULL;
+	weatherType[0]=NULL;
+	weatherType[1]=NULL;
 	windDir=NULL;
 	windSpd=NULL;
 	visibility=NULL;
@@ -113,6 +115,12 @@ void FsNewSimulationDialogTemplate::AddWeatherSelector(void)
 	}
 
 	AddStaticText(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WEATHER,YSTRUE);
+	
+	AddStaticText(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WEATHERTYPE,YSTRUE);
+	weatherType[0]=AddTextButton(1,FSKEY_NULL,FSGUI_RADIOBUTTON,FSGUI_NEWFLTDLG_CLEAR,YSFALSE);
+	weatherType[1]=AddTextButton(1,FSKEY_NULL,FSGUI_RADIOBUTTON,FSGUI_NEWFLTDLG_RAIN,YSFALSE);
+	SetRadioButtonGroup(2,weatherType);
+	
 	windDir=AddNumberBox(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WINDDIR,16,0,-360,360,10,YSTRUE);
 	windSpd=AddNumberBox(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WINDSPD,16,0,0,50,1,YSTRUE);
 	visibility=AddNumberBox(1,FSKEY_NULL,FSGUI_NEWFLTDLG_VISIBILITY,16,20,0,20,1,YSTRUE);
@@ -198,6 +206,11 @@ void FsNewSimulationDialogTemplate::OnButtonClick(FsGuiButton *btn)
 	YSBOOL envButton=YSFALSE;
 
 	if(btn==dayNight[0] || btn==dayNight[1])
+	{
+		envButton=YSTRUE;
+	}
+	
+	if(btn==weatherType[0] || btn==weatherType[1])
 	{
 		envButton=YSTRUE;
 	}
@@ -617,6 +630,20 @@ void FsGuiNewFlightDialogClass::InitializeDialog(FsWorld *world,const FsNewFligh
 		}
 	}
 
+	if(weatherType[0]!=NULL && weatherType[1]!=NULL)
+	{
+		if(info.envInfo.weatherType==FSWEATHER_CLEAR)
+		{
+			weatherType[0]->SetCheck(YSTRUE);
+			weatherType[1]->SetCheck(YSFALSE);
+		}
+		else
+		{
+			weatherType[0]->SetCheck(YSFALSE);
+			weatherType[1]->SetCheck(YSTRUE);
+		}
+	}
+
 
 
 	if(windDir!=NULL)
@@ -778,6 +805,16 @@ void FsGuiNewFlightDialogClass::OnButtonClick(FsGuiButton *btn)
 	if(btn!=NULL && btn==dayNight[1])
 	{
 		info.envInfo.dayOrNight=FSNIGHT;
+		return;
+	}
+	if(btn!=NULL && btn==weatherType[0])
+	{
+		info.envInfo.weatherType=FSWEATHER_CLEAR;
+		return;
+	}
+	if(btn!=NULL && btn==weatherType[1])
+	{
+		info.envInfo.weatherType=FSWEATHER_RAIN;
 		return;
 	}
 
