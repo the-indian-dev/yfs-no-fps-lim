@@ -65,6 +65,7 @@ public:
 	const YsVec3 &GetFogColor(void) const;
 	void UpdateRain(const double &dt);
 	void DrawRain(const YsVec3 &cameraPos, const YsVec3 &cameraDir) const;
+	void DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &cameraDir, const class FsSimulation *sim) const;
 
 	void SetCloudLayer(YSSIZE_T nLayer,const FsWeatherCloudLayer layer[]);
 	void AddCloudLayer(const FsWeatherCloudLayer &layer);

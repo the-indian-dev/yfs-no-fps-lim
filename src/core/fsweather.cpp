@@ -1,10 +1,12 @@
-
-
+#include <cstddef>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
 #include <math.h>
+#include <time.h>
+#include <vector>
+#include <algorithm>
 
 #include <ysclass.h>
 #include <ysgl.h>
@@ -15,9 +17,43 @@
 #define YsPi 3.14159265358979323846
 #endif
 
+// Rain particle structure for realistic physics
+struct RainParticle
+{
+    YsVec3 position;
+    YsVec3 velocity;
+    float life;
+    float maxLife;
+    bool hitGround;
+    YsVec3 splashPos;
+    float splashLife;
+    float size;
+    bool active;
+    float distanceFromCamera;
 
+    RainParticle() : life(0.0f), maxLife(3.0f), hitGround(false), splashLife(0.0f), size(1.0f), active(false), distanceFromCamera(1000.0f) {}
+};
 
+// Ground wetness effect structure
+struct WetnessPoint
+{
+    YsVec3 position;
+    float intensity;
+    float life;
+    float maxLife;
+    bool active;
 
+    WetnessPoint() : intensity(1.0f), life(0.0f), maxLife(10.0f), active(false) {}
+};
+
+// Global rain particle system
+static std::vector<RainParticle> rainParticles;
+static std::vector<WetnessPoint> wetnessPoints;
+static bool particleSystemInitialized = false;
+static const int MAX_RAIN_PARTICLES = 2000;
+static const int MAX_WETNESS_POINTS = 200;
+static double lastGroundCheck = 0.0;
+static double lastOptimizationTime = 0.0;
 
 const char *FsWeatherCloudLayer::CloudLayerTypeString(int cloudLayerType)
 {
@@ -40,10 +76,6 @@ int FsWeatherCloudLayer::CloudLayerTypeFromString(const char str[])
 	return FSCLOUDLAYER_NONE;
 }
 
-
-
-
-
 FsWeather::FsWeather()
 {
 	wind.Set(0.0,0.0,0.0);
@@ -53,7 +85,7 @@ FsWeather::FsWeather()
 
 	transWind.Set(0.0,0.0,0.0);
 	transFogVisibility=20000;
-	
+
 	// Initialize rain properties
 	isRaining=YSFALSE;
 	rainIntensity=0.0;
@@ -285,18 +317,27 @@ void FsWeather::SetWeatherType(FSWEATHERTYPE type)
 	if(type == FSWEATHER_RAIN)
 	{
 		isRaining = YSTRUE;
-		rainIntensity = 0.8;
-		// Set greyish colors for rain
-		skyColor.Set(0.4, 0.4, 0.5);  // Dark greyish sky
-		fogColor.Set(0.5, 0.5, 0.6);  // Greyish fog
-		
-		// Increase fog for rain effect
-		if(fogVisibility > 8000.0)
-		{
-			SetFogVisibility(8000.0);
-		}
-		
+		rainIntensity = 0.9;
+		// Darker but not too dark sky colors for better visibility
+		skyColor.Set(0.12, 0.18, 0.25);  // Dark stormy sky but lighter
+		fogColor.Set(0.25, 0.3, 0.35);   // Lighter atmospheric fog
 
+		// Don't force fog visibility - let user settings control it
+		// if(fogVisibility > 5000.0)
+		// {
+		//	SetFogVisibility(5000.0);
+		// }
+
+		// Add default storm cloud layers if none exist
+		if(cloudLayer.GetN() == 0)
+		{
+			FsWeatherCloudLayer stormClouds;
+			stormClouds.cloudLayerType = FSCLOUDLAYER_OVERCAST;
+			stormClouds.y0 = 50000.0;   // Cloud base
+			stormClouds.y1 = 70000.0;  // Cloud top
+			cloudLayer.Append(stormClouds);
+			//cloudLayer.Set(0, NULL);
+		}
 	}
 	else
 	{
@@ -304,6 +345,9 @@ void FsWeather::SetWeatherType(FSWEATHERTYPE type)
 		rainIntensity = 0.0;
 		skyColor.Set(0.5, 0.7, 1.0);  // Clear blue sky
 		fogColor.Set(0.8, 0.8, 0.8);  // Light grey fog
+
+		// Clear cloud layers for clear weather
+		cloudLayer.Set(0, NULL);
 	}
 }
 
@@ -336,184 +380,450 @@ void FsWeather::UpdateRain(const double &dt)
 {
 	if(isRaining == YSTRUE)
 	{
-		// Update thunder timer
+		// Update thunder timer with much faster intervals for dynamic storms
 		thunderTimer -= dt;
 		if(thunderTimer <= 0.0)
 		{
-			// Random thunder every 15-45 seconds for more realistic timing
-			thunderTimer = 15.0 + (rand() % 30);
+			thunderTimer = 2.0 + (rand() % 8); // Thunder every 2-10 seconds
 		}
-		
-		// More dynamic rain intensity variation
+
+		// Dynamic rain intensity with fast storm patterns
 		static double intensityTime = 0.0;
+		static double stormPhase = 0.0;
 		intensityTime += dt;
-		
-		// Base intensity with multiple wave variations for realistic rain
-		double wave1 = sin(intensityTime * 0.1) * 0.2;
-		double wave2 = sin(intensityTime * 0.3) * 0.1;
-		double wave3 = sin(intensityTime * 0.05) * 0.15;
-		
-		rainIntensity = 0.7 + wave1 + wave2 + wave3;
-		
-		// Clamp intensity to realistic range
-		if(rainIntensity < 0.4) rainIntensity = 0.4;
-		if(rainIntensity > 1.0) rainIntensity = 1.0;
-		
-		// Increase intensity briefly during thunder
+		stormPhase += dt * 0.15; // Much faster storm evolution
+
+		// Complex storm intensity modeling with rapid changes
+		double baseIntensity = 0.6 + sin(stormPhase) * 0.3;
+		double microVariation = sin(intensityTime * 6.0) * 0.2; // Faster micro variations
+		double gusts = sin(intensityTime * 2.5) * sin(intensityTime * 3.2) * 0.25; // Stronger, faster gusts
+
+		rainIntensity = baseIntensity + microVariation + gusts;
+
+		// Clamp to realistic range
+		rainIntensity = YsBound(rainIntensity, 0.3, 1.0);
+
+		// Intensify during thunder with faster buildup
 		if(thunderTimer > 0.0 && thunderTimer < 2.0)
 		{
-			rainIntensity += 0.2;
+			double thunderIntensity = (2.0 - thunderTimer) / 2.0;
+			rainIntensity += thunderIntensity * 0.6; // Stronger thunder effect
 			if(rainIntensity > 1.0) rainIntensity = 1.0;
+		}
+
+		// Dynamically adjust sky darkness based on intensity and thunder
+		double baseDarkness = 0.12;
+		double intensityDarkness = rainIntensity * 0.1;
+		double thunderDarkness = 0.0;
+
+		// Make sky darker during thunder buildup with faster cycles
+		if(thunderTimer > 0.0 && thunderTimer < 3.0)
+		{
+			thunderDarkness = (3.0 - thunderTimer) / 3.0 * 0.1; // Moderate darkening
+		}
+
+		double totalDarkness = baseDarkness + intensityDarkness - thunderDarkness;
+		skyColor.Set(totalDarkness, totalDarkness + 0.04, totalDarkness + 0.1);
+
+		// Adjust fog color to match atmospheric conditions
+		fogColor.Set(totalDarkness + 0.15, totalDarkness + 0.2, totalDarkness + 0.25);
+	}
+}
+
+// Initialize particle system
+void InitializeRainParticleSystem()
+{
+	if(!particleSystemInitialized)
+	{
+		rainParticles.resize(MAX_RAIN_PARTICLES);
+		wetnessPoints.resize(MAX_WETNESS_POINTS);
+		for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+		{
+			rainParticles[i].active = false;
+		}
+		for(int i = 0; i < MAX_WETNESS_POINTS; i++)
+		{
+			wetnessPoints[i].active = false;
+		}
+		particleSystemInitialized = true;
+		srand((unsigned int)time(NULL));
+	}
+}
+
+// Optimize particle system by removing distant/old particles
+void OptimizeParticleSystem(const YsVec3 &cameraPos, double currentTime)
+{
+	const double maxRenderDistance = 1200.0; // Increased render distance
+
+	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+	{
+		if(rainParticles[i].active)
+		{
+			rainParticles[i].distanceFromCamera = (rainParticles[i].position - cameraPos).GetLength();
+			if(rainParticles[i].distanceFromCamera > maxRenderDistance)
+			{
+				rainParticles[i].active = false;
+			}
+		}
+	}
+
+	lastOptimizationTime = currentTime;
+}
+
+// Add wetness point when rain hits ground
+void AddWetnessPoint(const YsVec3 &position, float intensity)
+{
+	for(int i = 0; i < MAX_WETNESS_POINTS; i++)
+	{
+		if(!wetnessPoints[i].active)
+		{
+			wetnessPoints[i].position = position;
+			wetnessPoints[i].intensity = intensity;
+			wetnessPoints[i].life = 0.0f;
+			wetnessPoints[i].maxLife = 8.0f + (rand() % 40) * 0.1f;
+			wetnessPoints[i].active = true;
+			break;
 		}
 	}
 }
 
+// Get ground elevation using simulation's field system
+double GetGroundElevationAt(const YsVec3 &pos, const class FsSimulation *sim)
+{
+	if(sim != NULL)
+	{
+		return sim->GetFieldElevation(pos.x(), pos.z());
+	}
+	return 0.0;
+}
+
 void FsWeather::DrawRain(const YsVec3 &cameraPos, const YsVec3 &cameraDir) const
+{
+	// Legacy method - calls new method with null sim pointer
+	DrawRainWithTerrain(cameraPos, cameraDir, nullptr);
+}
+
+void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &cameraDir, const class FsSimulation *sim) const
 {
 	if(isRaining != YSTRUE || rainIntensity <= 0.0)
 	{
 		return;
 	}
 
-	// Rain particle rendering using OpenGL
+	// Initialize particle system if needed
+	InitializeRainParticleSystem();
+
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
-	
+
 	glDisable(GL_LIGHTING);
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
-	
-	// Create a grid in front of camera for rain particles
-	const int gridSizeX = 40;
-	const int gridSizeZ = 40;
-	const double gridSpacing = 25.0;
-	const double baseDistance = 30.0;  // Start rain closer to camera
-	const double maxDistance = 600.0;   // Extend to reasonable distance
-	
-	// Calculate camera forward and right vectors
-	YsVec3 forward = cameraDir;
-	forward.Normalize();
-	YsVec3 up(0.0, 1.0, 0.0);
-	YsVec3 right = forward ^ up;
-	right.Normalize();
-	up = right ^ forward;
-	up.Normalize();
-	
-	// Draw rain particles as small points and short lines
-	glPointSize(1.5f);
-	
-	// Multiple depth layers for better 3D effect
-	for(int depth = 0; depth < 6; depth++)
+	glDepthMask(GL_FALSE); // Don't write to depth buffer for transparent rain
+
+	// Update particle system with more responsive spawning
+	const double dt = 0.0167; // Assume ~60fps for particle updates
+	const int particlesToSpawn = (int)(rainIntensity * 50.0);
+
+	// More frequent optimization but less aggressive culling
+	static double systemTime = 0.0;
+	systemTime += dt;
+	if(systemTime - lastOptimizationTime > 0.25) // Optimize every 0.25 seconds instead of 0.5
 	{
-		double layerDistance = baseDistance + (depth * (maxDistance - baseDistance) / 6.0);
-		float alpha = (0.9f - depth * 0.12f) * (float)rainIntensity;
-		if(alpha <= 0.0f) continue;
-		
-		// More visible but still subtle rain color
-		glColor4f(0.7f, 0.8f, 0.95f, alpha * 0.5f);
-		
-		glBegin(GL_LINES);
-		
-		// Create rain grid at this depth
-		for(int x = -gridSizeX/2; x < gridSizeX/2; x++)
+		OptimizeParticleSystem(cameraPos, systemTime);
+	}
+
+	// Spawn new particles
+	for(int spawn = 0; spawn < particlesToSpawn; spawn++)
+	{
+		for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
 		{
-			for(int z = -gridSizeZ/2; z < gridSizeZ/2; z++)
+			if(!rainParticles[i].active)
 			{
-				// Calculate world position for this grid point
-				double localX = x * gridSpacing + (rand() % 10 - 5);
-				double localZ = z * gridSpacing + (rand() % 10 - 5);
-				
-				YsVec3 gridPos = cameraPos + forward * layerDistance + 
-				                right * localX + up * (rand() % 20 - 10);
-				gridPos.AddZ(localZ);
-				
-				// Add some vertical randomness
-				double dropY = gridPos.y() + 100.0 + (rand() % 200);
-				
-				// Small rain drops - much shorter lines
-				double dropLength = 4.0 + (rand() % 4);
-				
-				// Add slight wind effect
-				YsVec3 windOffset = wind * 0.05;
-				
-				// Draw small rain drop
-				glVertex3d(gridPos.x() + windOffset.x(), dropY, gridPos.z() + windOffset.z());
-				glVertex3d(gridPos.x() + windOffset.x(), dropY - dropLength, gridPos.z() + windOffset.z());
+				// Spawn particle in area around camera
+				double angle = (rand() % 360) * YsPi / 180.0;
+				double distance = 50.0 + (rand() % 300);
+				double height = 80.0 + (rand() % 120);
+
+				rainParticles[i].position.Set(
+					cameraPos.x() + cos(angle) * distance,
+					cameraPos.y() + height,
+					cameraPos.z() + sin(angle) * distance
+				);
+
+				// Rain velocity affected by wind and gravity
+				rainParticles[i].velocity.Set(
+					wind.x() * 0.3 + (rand() % 20 - 10) * 0.1,
+					-200.0 - (rand() % 25), // Much faster falling speed
+					wind.z() * 0.3 + (rand() % 20 - 10) * 0.1
+				);
+
+				rainParticles[i].life = 0.0f;
+				rainParticles[i].maxLife = 5.0f + (rand() % 30) * 0.1f;
+				rainParticles[i].hitGround = false;
+				rainParticles[i].splashLife = 0.0f;
+				rainParticles[i].size = 0.8f + (rand() % 5) * 0.1f;
+				rainParticles[i].active = true;
+				break;
 			}
 		}
-		
-		glEnd();
-		
-		// Add some scattered individual drops for variety
-		glBegin(GL_POINTS);
-		for(int i = 0; i < 80; i++)
+	}
+
+	// Update and render particles
+	glBegin(GL_LINES);
+
+	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+	{
+		if(!rainParticles[i].active) continue;
+
+		RainParticle &p = rainParticles[i];
+
+		// Update particle physics
+		p.life += dt;
+		p.position += p.velocity * dt;
+
+		// Check ground collision using actual terrain height
+		double groundLevel = 0.0;
+		if(sim != nullptr)
+		{
+			groundLevel = sim->GetFieldElevation(p.position.x(), p.position.z());
+		}
+
+		if(!p.hitGround && p.position.y() <= groundLevel + 0.5)
+		{
+			p.hitGround = true;
+			p.splashPos = p.position;
+			p.splashPos.SetY(groundLevel);
+			p.splashLife = 0.0f;
+
+			// Wetness effects disabled to prevent ground rendering issues
+			// AddWetnessPoint(p.splashPos, rainIntensity * 0.8f);
+		}
+
+		// Remove particle if too old or hit ground
+		if(p.life >= p.maxLife || (p.hitGround && p.splashLife > 0.3f))
+		{
+			p.active = false;
+			continue;
+		}
+
+		// Render falling raindrop with LOD
+		if(!p.hitGround)
+		{
+			float alpha = (800.0f - p.distanceFromCamera) / 800.0f;
+			alpha *= (float)rainIntensity;
+			alpha = YsBound(alpha, 0.0f, 0.95f);
+
+			if(alpha > 0.02f)
+			{
+				// Color varies with distance for atmospheric perspective
+				float colorIntensity = 0.85f + (1.0f - p.distanceFromCamera / 1200.0f) * 0.15f;
+				glColor4f(colorIntensity, colorIntensity + 0.05f, 1.0f, alpha);
+
+				// Draw raindrop as a short line with size based on distance
+				double lineLength = p.size * 3.0;
+				if(p.distanceFromCamera > 600.0) lineLength *= 0.8; // Less aggressive size reduction
+
+				YsVec3 normalizedVel = p.velocity;
+				normalizedVel.Normalize();
+				YsVec3 dropEnd = p.position + normalizedVel * lineLength;
+
+				glVertex3d(p.position.x(), p.position.y(), p.position.z());
+				glVertex3d(dropEnd.x(), dropEnd.y(), dropEnd.z());
+			}
+		}
+	}
+
+	glEnd();
+
+	// Render ground splash effects
+	glPointSize(2.0f);
+	glBegin(GL_POINTS);
+
+	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+	{
+		if(!rainParticles[i].active || !rainParticles[i].hitGround) continue;
+
+		RainParticle &p = rainParticles[i];
+		p.splashLife += dt;
+
+		if(p.splashLife < 0.2f)
+		{
+			double distanceFromCamera = (p.splashPos - cameraPos).GetLength();
+			if(distanceFromCamera < 200.0)
+			{
+				float splashAlpha = (0.2f - p.splashLife) / 0.2f;
+				splashAlpha *= (float)rainIntensity * 0.8f;
+
+				glColor4f(0.7f, 0.8f, 0.9f, splashAlpha);
+				glVertex3d(p.splashPos.x(), p.splashPos.y() + 0.1, p.splashPos.z());
+
+				// Add small splash particles around impact point
+				for(int j = 0; j < 3; j++)
+				{
+					double splashAngle = (rand() % 360) * YsPi / 180.0;
+					double splashDist = (rand() % 3) * 0.5;
+					YsVec3 splashPoint = p.splashPos;
+					splashPoint.AddX(cos(splashAngle) * splashDist);
+					splashPoint.AddZ(sin(splashAngle) * splashDist);
+					splashPoint.AddY(0.05 + (rand() % 3) * 0.02);
+
+					glColor4f(0.6f, 0.7f, 0.85f, splashAlpha * 0.6f);
+					glVertex3d(splashPoint.x(), splashPoint.y(), splashPoint.z());
+				}
+			}
+		}
+	}
+
+	glEnd();
+
+	// Wetness effects completely disabled to prevent ground rendering issues
+	/*
+	for(int i = 0; i < MAX_WETNESS_POINTS; i++)
+	{
+		if(!wetnessPoints[i].active) continue;
+
+		WetnessPoint &w = wetnessPoints[i];
+		w.life += dt;
+
+		if(w.life >= w.maxLife)
+		{
+			w.active = false;
+			continue;
+		}
+
+		double distanceFromCamera = (w.position - cameraPos).GetLength();
+		if(distanceFromCamera < 50.0)
+		{
+			float wetnessAlpha = (1.0f - w.life / w.maxLife) * w.intensity * 0.1f;
+
+			glColor4f(0.2f, 0.25f, 0.3f, wetnessAlpha);
+			glBegin(GL_POINTS);
+			glVertex3d(w.position.x(), w.position.y() + 0.01, w.position.z());
+			glEnd();
+		}
+	}
+	*/
+
+	// Add extra rain for top-down visibility
+	glPointSize(1.0f);
+	glBegin(GL_POINTS);
+
+	// Camera direction check for top-down view
+	YsVec3 upVector(0.0, 1.0, 0.0);
+	double dotProduct = cameraDir * upVector;
+
+	// If looking down (dot product negative), add more visible rain
+	if(dotProduct < -0.3)
+	{
+		float topDownIntensity = (-dotProduct - 0.3f) / 0.7f; // Scale from 0 to 1
+
+		for(int i = 0; i < (int)(topDownIntensity * 200); i++)
 		{
 			double angle = (rand() % 360) * YsPi / 180.0;
-			double radius = (rand() % (int)(layerDistance * 0.4));
-			double dropX = cameraPos.x() + radius * cos(angle);
-			double dropZ = cameraPos.z() + radius * sin(angle);
-			double dropY = cameraPos.y() + 30.0 + (rand() % 80);
-			
-			glVertex3d(dropX, dropY, dropZ);
+			double radius = (rand() % 400);
+			double height = cameraPos.y() - 10.0 - (rand() % 50);
+
+			double x = cameraPos.x() + cos(angle) * radius;
+			double z = cameraPos.z() + sin(angle) * radius;
+
+			float alpha = (400.0f - radius) / 400.0f * (float)rainIntensity * topDownIntensity;
+			glColor4f(0.8f, 0.85f, 0.95f, alpha);
+			glVertex3d(x, height, z);
 		}
-		glEnd();
 	}
-	
-	// Add close-range rain drops around player for immersion
-	glColor4f(0.8f, 0.9f, 1.0f, 0.7f * (float)rainIntensity);
-	glBegin(GL_LINES);
-	
-	// Create a cylinder of rain around the player (more realistic than sphere)
-	for(int i = 0; i < 150; i++)
-	{
-		// Random position in a cylinder around camera
-		double angle = (rand() % 360) * YsPi / 180.0;
-		double radius = 15.0 + (rand() % 40);  // Close to player
-		double height = 10.0 + (rand() % 60);  // Vary height
-		
-		double dropX = cameraPos.x() + radius * cos(angle);
-		double dropZ = cameraPos.z() + radius * sin(angle);
-		double dropY = cameraPos.y() + height;
-		
-		double dropLength = 3.0 + (rand() % 3);
-		YsVec3 windOffset = wind * 0.04;
-		
-		glVertex3d(dropX + windOffset.x(), dropY, dropZ + windOffset.z());
-		glVertex3d(dropX + windOffset.x(), dropY - dropLength, dropZ + windOffset.z());
-	}
-	
+
 	glEnd();
-	
-	// Enhanced thunder flash effect
+
+	// Enhanced thunder flash effect with faster, more dramatic flashes
 	if(thunderTimer > 0.0 && thunderTimer < 1.0)
 	{
 		float flashIntensity = 0.0f;
 		if(thunderTimer < 0.1) // Bright initial flash
 		{
-			flashIntensity = (0.1f - (float)thunderTimer) * 10.0f;
+			flashIntensity = (0.1f - (float)thunderTimer) / 0.1f;
 		}
-		else if(thunderTimer < 0.3) // Secondary flicker
+		else if(thunderTimer < 0.3) // Multiple rapid flickers
 		{
-			flashIntensity = sin((float)thunderTimer * 50.0f) * 0.3f;
+			flashIntensity = sin((float)thunderTimer * 80.0f) * 0.6f; // Faster, stronger flickers
+			if(flashIntensity < 0) flashIntensity = 0;
 		}
-		
+		else if(thunderTimer < 0.6) // Additional flickering
+		{
+			flashIntensity = sin((float)thunderTimer * 120.0f) * 0.3f;
+			if(flashIntensity < 0) flashIntensity = 0;
+		}
+
 		if(flashIntensity > 0.0f)
 		{
-			glColor4f(1.0f, 1.0f, 1.0f, flashIntensity * 0.4f);
-			
-			// Draw larger flash covering more of the sky
-			const double flashSize = 5000.0;
+			glColor4f(0.9f, 0.95f, 1.0f, flashIntensity * 0.8f); // More intense flashes
+
+			// Large atmospheric flash
+			const double flashSize = 8000.0;
 			glBegin(GL_QUADS);
-			glVertex3d(cameraPos.x() - flashSize, cameraPos.y() + 800, cameraPos.z() - flashSize);
-			glVertex3d(cameraPos.x() + flashSize, cameraPos.y() + 800, cameraPos.z() - flashSize);
-			glVertex3d(cameraPos.x() + flashSize, cameraPos.y() + 800, cameraPos.z() + flashSize);
-			glVertex3d(cameraPos.x() - flashSize, cameraPos.y() + 800, cameraPos.z() + flashSize);
+			glVertex3d(cameraPos.x() - flashSize, cameraPos.y() + 1200, cameraPos.z() - flashSize);
+			glVertex3d(cameraPos.x() + flashSize, cameraPos.y() + 1200, cameraPos.z() - flashSize);
+			glVertex3d(cameraPos.x() + flashSize, cameraPos.y() + 1200, cameraPos.z() + flashSize);
+			glVertex3d(cameraPos.x() - flashSize, cameraPos.y() + 1200, cameraPos.z() + flashSize);
+			glEnd();
+
+			// Directional lightning effect
+			glColor4f(1.0f, 1.0f, 1.0f, flashIntensity * 0.8f);
+			glBegin(GL_LINES);
+
+			YsVec3 lightningStart = cameraPos + YsVec3((rand() % 2000 - 1000), 400 + (rand() % 200), (rand() % 2000 - 1000));
+			YsVec3 lightningEnd = lightningStart + YsVec3((rand() % 200 - 100), -300 - (rand() % 100), (rand() % 200 - 100));
+
+			glVertex3d(lightningStart.x(), lightningStart.y(), lightningStart.z());
+			glVertex3d(lightningEnd.x(), lightningEnd.y(), lightningEnd.z());
 			glEnd();
 		}
 	}
-	
+
+	glDepthMask(GL_TRUE);
 	glPopAttrib();
 }
 
+void FsWeather::DrawCloudLayer(const YsVec3 &cameraPos) const
+{
+	// Simplified cloud layer - just subtle overhead darkening
+	if(weatherType != FSWEATHER_RAIN || cloudLayer.GetN() == 0)
+	{
+		return;
+	}
 
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_DEPTH_TEST);
+
+	// Very subtle overhead darkening effect only
+	for(int i = 0; i < (int)cloudLayer.GetN(); i++)
+	{
+		const FsWeatherCloudLayer &layer = cloudLayer[i];
+
+		if(layer.cloudLayerType == FSCLOUDLAYER_OVERCAST && layer.y0 > cameraPos.y() + 100.0)
+		{
+			// Very subtle, high altitude darkening
+			float alpha = (float)rainIntensity * 0.05f;
+			glColor4f(0.4f, 0.45f, 0.5f, alpha);
+
+			// Simple overhead rectangle
+			double size = 5000.0;
+			double height = layer.y0 + 200.0;
+
+			glBegin(GL_QUADS);
+			glVertex3d(cameraPos.x() - size, height, cameraPos.z() - size);
+			glVertex3d(cameraPos.x() + size, height, cameraPos.z() - size);
+			glVertex3d(cameraPos.x() + size, height, cameraPos.z() + size);
+			glVertex3d(cameraPos.x() - size, height, cameraPos.z() + size);
+			glEnd();
+		}
+	}
+
+	glPopAttrib();
+}

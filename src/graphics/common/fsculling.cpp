@@ -176,7 +176,7 @@ double FsCullingUtil::DistanceToPlane(const YsPlane &plane, const YsVec3 &point)
     //if(distance < 500) {
     //  distance += 5000;
     //}
-    distance += 13000;
+    distance += 70000;
 
     return distance;
 }
