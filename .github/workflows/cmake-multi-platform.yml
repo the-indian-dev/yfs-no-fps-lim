@@ -21,17 +21,24 @@ jobs:
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
+            name_suffix: MSVC
+          - os: windows-latest
+            c_compiler: gcc # MinGW target
+            cpp_compiler: g++
+            name_suffix: MinGW
           - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
+            name_suffix: GCC
           - os: ubuntu-22.04
             c_compiler: clang
             cpp_compiler: clang++
+            name_suffix: Clang
         exclude:
-          - os: windows-latest
-            c_compiler: gcc
+          # Clang on Windows is not part of this matrix setup
           - os: windows-latest
             c_compiler: clang
+          # MSVC (cl) on Linux is not applicable
           - os: ubuntu-22.04
             c_compiler: cl
 
@@ -54,17 +61,34 @@ jobs:
           libgl1-mesa-dev \
           libglu1-mesa-dev \
           libasound2-dev \
-          libpulse-dev
+          libpulse-dev \
+          ninja-build # Added for -G Ninja
+
+    - name: Setup MSYS2 for MinGW
+      if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64 # Use the MINGW64 environment
+        update: true
+        pacboy: >-
+          toolchain:p
+          cmake:p
+          ninja:p
+          mesa:p # Installs mingw-w64-x86_64-toolchain, -cmake, -ninja, -mesa (for opengl32, glu32)
 
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
       working-directory: ${{ github.workspace }}
       shell: bash
       run: |
-        echo "Configuring CMake for Linux with GCC/Clang specific flags"
+        echo "Configuring CMake for Linux with GCC/Clang specific flags using Ninja"
+        # OpenGL libraries (libGL, libGLU) are expected to be found via installed dev packages.
+        # If CMakeLists.txt does not use find_package(OpenGL), direct linking via -lGL -lGLU
+        # might be necessary if the linker doesn't pick them up automatically.
         cmake \
           -S src \
           -B ${{ steps.strings.outputs.build-output-dir }} \
+          -G "Ninja" \
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
@@ -72,13 +96,13 @@ jobs:
           -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
           -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
-    - name: Configure CMake (Windows)
-      if: runner.os == 'Windows'
+    - name: Configure CMake (Windows MSVC)
+      if: runner.os == 'Windows' && matrix.c_compiler == 'cl'
       working-directory: ${{ github.workspace }}
-      shell: cmd # Using cmd for Windows
+      shell: cmd # Using cmd for Windows MSVC
       run: |
         echo "Configuring CMake for Windows (MSVC)"
-        echo "Attempting to link with opengl32.lib and glu32.lib. For a permanent fix, update your CMakeLists.txt to find and link OpenGL."
+        echo "Explicitly linking with opengl32.lib and glu32.lib as CMakeLists.txt is not updated."
         set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
         cmake -S src ^
           -B ${{ steps.strings.outputs.build-output-dir }} ^
@@ -90,30 +114,58 @@ jobs:
           -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
           :: No -Wno-incompatible-pointer-types for MSVC by default.
 
+    - name: Configure CMake (Windows MinGW)
+      if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
+      working-directory: ${{ github.workspace }}
+      shell: msys2 {0} # Run in MSYS2 environment
+      run: |
+        echo "Configuring CMake for Windows (MinGW) using Ninja"
+        echo "Explicitly linking with -lopengl32 -lglu32 as CMakeLists.txt is not updated."
+        # The 'mesa' package installed via pacboy provides libopengl32.a and libglu32.a for MinGW.
+        cmake \
+          -S src \
+          -B ${{ steps.strings.outputs.build-output-dir }} \
+          -G "Ninja" \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types" \
+          -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+          -DCMAKE_EXE_LINKER_FLAGS="-lopengl32 -lglu32" \
+          -DCMAKE_SHARED_LINKER_FLAGS="-lopengl32 -lglu32"
+
     - name: Build
+      # Select shell based on OS and compiler
+      # MinGW: msys2 {0}
+      # Linux: bash
+      # Windows MSVC: powershell (default for Windows runners)
+      shell: ${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') && 'msys2 {0}' || (runner.os == 'Linux' && 'bash') || 'powershell' }}
       run: >
         cmake --build ${{ steps.strings.outputs.build-output-dir }}
         --config ${{ matrix.build_type }}
         --parallel
 
-    - name: Copy icon (Example - if not handled by CMake)
+    - name: Copy icon
       if: success()
-      shell: bash
+      shell: bash # Bash is available on Linux and Windows (Git Bash/MSYS2)
       working-directory: ${{ github.workspace }}
       run: |
-        ICON_SOURCE_PATH="src/misc/icon.png"
+        ICON_SOURCE_PATH="src/misc/logo.png"
         ICON_DEST_DIR="${{ steps.strings.outputs.main-output-dir }}/misc"
 
         if [ -f "$ICON_SOURCE_PATH" ]; then
           echo "Icon found at $ICON_SOURCE_PATH. Attempting to copy..."
           mkdir -p "$ICON_DEST_DIR"
-          cp "$ICON_SOURCE_PATH" "$ICON_DEST_DIR/icon.png"
-          echo "Icon copied to $ICON_DEST_DIR/icon.png"
+          cp "$ICON_SOURCE_PATH" "$ICON_DEST_DIR/logo.png"
+          echo "Icon copied to $ICON_DEST_DIR/logo.png"
         else
           echo "Warning: Icon not found at $ICON_SOURCE_PATH (expected at ${{ github.workspace }}/$ICON_SOURCE_PATH). Skipping copy."
         fi
 
     - name: Test
+      # Select shell based on OS and compiler (same logic as Build step)
+      shell: ${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') && 'msys2 {0}' || (runner.os == 'Linux' && 'bash') || 'powershell' }}
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ctest --build-config ${{ matrix.build_type }} -V
 
@@ -121,7 +173,7 @@ jobs:
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: Main-Build-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
+        name: Main-Build-${{ matrix.os }}-${{ matrix.name_suffix }}-${{ matrix.build_type }}
         path: ${{ steps.strings.outputs.main-output-dir }}
         if-no-files-found: warn
         retention-days: 7
