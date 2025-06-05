@@ -16,13 +16,13 @@ public:
     static Frustum CreateFrustumFromCurrentMatrix(void);
 
     // Test if sphere is visible in frustum
-    static YSBOOL IsSphereVisible(const Frustum &frustum, const YsVec3 &center, const double radius);
+    static YSBOOL IsSphereVisible(const Frustum &frustum, const YsVec3 &center, const double radius, const double tolerance = 70000.0);
     
     // Test if bounding box is visible in frustum
-    static YSBOOL IsBoundingBoxVisible(const Frustum &frustum, const YsVec3 bbx[2]);
+    static YSBOOL IsBoundingBoxVisible(const Frustum &frustum, const YsVec3 bbx[2], const double tolerance = 70000.0);
     
     // Test if a point is visible in frustum
-    static YSBOOL IsPointVisible(const Frustum &frustum, const YsVec3 &point);
+    static YSBOOL IsPointVisible(const Frustum &frustum, const YsVec3 &point, const double tolerance = 70000.0);
     
     // Get distance from a point to a plane
     static double DistanceToPlane(const YsPlane &plane, const YsVec3 &point);

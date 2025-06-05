@@ -34,7 +34,7 @@ FsCullingUtil::Frustum FsCullingUtil::CreateFrustumFromCurrentMatrix(void)
     // Combine the matrices (clip = proj * model)
     GLfloat clipMatrix[16];
 
-    // Multiply matrices
+    // Multiply matrices: clipMatrix = projMatrix * modelMatrix
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             clipMatrix[i*4+j] = 0.0f;
@@ -44,112 +44,121 @@ FsCullingUtil::Frustum FsCullingUtil::CreateFrustumFromCurrentMatrix(void)
         }
     }
 
-    // Extract frustum planes
-    // Left plane
+    // Extract frustum planes using proper plane equation extraction
+    // Each plane is defined as ax + by + cz + d = 0
+    
+    // Left plane: clip[3] + clip[0]
     {
-        YsVec3 normal(clipMatrix[3] + clipMatrix[0],
-                      clipMatrix[7] + clipMatrix[4],
-                      clipMatrix[11] + clipMatrix[8]);
-        YsVec3 origin = YsVec3::Origin();
-        if(normal.GetSquareLength() > YsTolerance)
-        {
-            double len = normal.GetLength();
-            origin = normal * (-clipMatrix[15] - clipMatrix[12]) / len;
+        double a = clipMatrix[3] + clipMatrix[0];
+        double b = clipMatrix[7] + clipMatrix[4];
+        double c = clipMatrix[11] + clipMatrix[8];
+        double d = clipMatrix[15] + clipMatrix[12];
+        
+        YsVec3 normal(a, b, c);
+        double len = normal.GetLength();
+        if (len > YsTolerance) {
+            normal = normal / len;
+            d = d / len;
+            // Convert plane equation to point-normal form
+            YsVec3 origin = normal * (-d);
             frustum.planes[0].Set(origin, normal);
-        }
-        else
-        {
-            frustum.planes[0].Set(origin, YsVec3(1.0, 0.0, 0.0));
+        } else {
+            frustum.planes[0].Set(YsVec3::Origin(), YsVec3(1.0, 0.0, 0.0));
         }
     }
 
-    // Right plane
+    // Right plane: clip[3] - clip[0]
     {
-        YsVec3 normal(clipMatrix[3] - clipMatrix[0],
-                      clipMatrix[7] - clipMatrix[4],
-                      clipMatrix[11] - clipMatrix[8]);
-        YsVec3 origin = YsVec3::Origin();
-        if(normal.GetSquareLength() > YsTolerance)
-        {
-            double len = normal.GetLength();
-            origin = normal * (-clipMatrix[15] + clipMatrix[12]) / len;
+        double a = clipMatrix[3] - clipMatrix[0];
+        double b = clipMatrix[7] - clipMatrix[4];
+        double c = clipMatrix[11] - clipMatrix[8];
+        double d = clipMatrix[15] - clipMatrix[12];
+        
+        YsVec3 normal(a, b, c);
+        double len = normal.GetLength();
+        if (len > YsTolerance) {
+            normal = normal / len;
+            d = d / len;
+            YsVec3 origin = normal * (-d);
             frustum.planes[1].Set(origin, normal);
-        }
-        else
-        {
-            frustum.planes[1].Set(origin, YsVec3(1.0, 0.0, 0.0));
+        } else {
+            frustum.planes[1].Set(YsVec3::Origin(), YsVec3(-1.0, 0.0, 0.0));
         }
     }
 
-    // Bottom plane
+    // Bottom plane: clip[3] + clip[1]
     {
-        YsVec3 normal(clipMatrix[3] + clipMatrix[1],
-                      clipMatrix[7] + clipMatrix[5],
-                      clipMatrix[11] + clipMatrix[9]);
-        YsVec3 origin = YsVec3::Origin();
-        if(normal.GetSquareLength() > YsTolerance)
-        {
-            double len = normal.GetLength();
-            origin = normal * (-clipMatrix[15] - clipMatrix[13]) / len;
+        double a = clipMatrix[3] + clipMatrix[1];
+        double b = clipMatrix[7] + clipMatrix[5];
+        double c = clipMatrix[11] + clipMatrix[9];
+        double d = clipMatrix[15] + clipMatrix[13];
+        
+        YsVec3 normal(a, b, c);
+        double len = normal.GetLength();
+        if (len > YsTolerance) {
+            normal = normal / len;
+            d = d / len;
+            YsVec3 origin = normal * (-d);
             frustum.planes[2].Set(origin, normal);
-        }
-        else
-        {
-            frustum.planes[2].Set(origin, YsVec3(0.0, 1.0, 0.0));
+        } else {
+            frustum.planes[2].Set(YsVec3::Origin(), YsVec3(0.0, 1.0, 0.0));
         }
     }
 
-    // Top plane
+    // Top plane: clip[3] - clip[1]
     {
-        YsVec3 normal(clipMatrix[3] - clipMatrix[1],
-                      clipMatrix[7] - clipMatrix[5],
-                      clipMatrix[11] - clipMatrix[9]);
-        YsVec3 origin = YsVec3::Origin();
-        if(normal.GetSquareLength() > YsTolerance)
-        {
-            double len = normal.GetLength();
-            origin = normal * (-clipMatrix[15] + clipMatrix[13]) / len;
+        double a = clipMatrix[3] - clipMatrix[1];
+        double b = clipMatrix[7] - clipMatrix[5];
+        double c = clipMatrix[11] - clipMatrix[9];
+        double d = clipMatrix[15] - clipMatrix[13];
+        
+        YsVec3 normal(a, b, c);
+        double len = normal.GetLength();
+        if (len > YsTolerance) {
+            normal = normal / len;
+            d = d / len;
+            YsVec3 origin = normal * (-d);
             frustum.planes[3].Set(origin, normal);
-        }
-        else
-        {
-            frustum.planes[3].Set(origin, YsVec3(0.0, 1.0, 0.0));
+        } else {
+            frustum.planes[3].Set(YsVec3::Origin(), YsVec3(0.0, -1.0, 0.0));
         }
     }
 
-    // Near plane
+    // Near plane: clip[3] + clip[2]
     {
-        YsVec3 normal(clipMatrix[3] + clipMatrix[2],
-                      clipMatrix[7] + clipMatrix[6],
-                      clipMatrix[11] + clipMatrix[10]);
-        YsVec3 origin = YsVec3::Origin();
-        if(normal.GetSquareLength() > YsTolerance)
-        {
-            double len = normal.GetLength();
-            origin = normal * (-clipMatrix[15] - clipMatrix[14]) / len;
+        double a = clipMatrix[3] + clipMatrix[2];
+        double b = clipMatrix[7] + clipMatrix[6];
+        double c = clipMatrix[11] + clipMatrix[10];
+        double d = clipMatrix[15] + clipMatrix[14];
+        
+        YsVec3 normal(a, b, c);
+        double len = normal.GetLength();
+        if (len > YsTolerance) {
+            normal = normal / len;
+            d = d / len;
+            YsVec3 origin = normal * (-d);
             frustum.planes[4].Set(origin, normal);
-        }
-        else
-        {
-            frustum.planes[4].Set(origin, YsVec3(0.0, 0.0, 1.0));
+        } else {
+            frustum.planes[4].Set(YsVec3::Origin(), YsVec3(0.0, 0.0, 1.0));
         }
     }
 
-    // Far plane
+    // Far plane: clip[3] - clip[2]
     {
-        YsVec3 normal(clipMatrix[3] - clipMatrix[2],
-                      clipMatrix[7] - clipMatrix[6],
-                      clipMatrix[11] - clipMatrix[10]);
-        YsVec3 origin = YsVec3::Origin();
-        if(normal.GetSquareLength() > YsTolerance)
-        {
-            double len = normal.GetLength();
-            origin = normal * (-clipMatrix[15] + clipMatrix[14]) / len;
+        double a = clipMatrix[3] - clipMatrix[2];
+        double b = clipMatrix[7] - clipMatrix[6];
+        double c = clipMatrix[11] - clipMatrix[10];
+        double d = clipMatrix[15] - clipMatrix[14];
+        
+        YsVec3 normal(a, b, c);
+        double len = normal.GetLength();
+        if (len > YsTolerance) {
+            normal = normal / len;
+            d = d / len;
+            YsVec3 origin = normal * (-d);
             frustum.planes[5].Set(origin, normal);
-        }
-        else
-        {
-            frustum.planes[5].Set(origin, YsVec3(0.0, 0.0, 1.0));
+        } else {
+            frustum.planes[5].Set(YsVec3::Origin(), YsVec3(0.0, 0.0, -1.0));
         }
     }
 
@@ -161,49 +170,36 @@ double FsCullingUtil::DistanceToPlane(const YsPlane &plane, const YsVec3 &point)
     const YsVec3 &normal = plane.GetNormal();
     const YsVec3 &origin = plane.GetOrigin();
 
-    // Plane equation: ax + by + cz + d = 0, where (a,b,c) is the normal
-    // and d = -(a*x0 + b*y0 + c*z0) for a point (x0,y0,z0) on the plane
-
-    double a = normal.x();
-    double b = normal.y();
-    double c = normal.z();
-    double d = -(normal * origin);
-
     // Calculate signed distance from point to plane
-    // Adding a small epsilon (5000) to make culling less aggressive
-    double distance = a * point.x() + b * point.y() + c * point.z() + d;
-
-    //if(distance < 500) {
-    //  distance += 5000;
-    //}
-    distance += 70000;
+    // Using the standard point-to-plane distance formula
+    double distance = normal * (point - origin);
 
     return distance;
 }
 
-YSBOOL FsCullingUtil::IsPointVisible(const Frustum &frustum, const YsVec3 &point)
+YSBOOL FsCullingUtil::IsPointVisible(const Frustum &frustum, const YsVec3 &point, const double tolerance)
 {
     for (int i = 0; i < 6; i++) {
-        if (DistanceToPlane(frustum.planes[i], point) < 0) {
+        if (DistanceToPlane(frustum.planes[i], point) < -tolerance) {
             return YSFALSE;
         }
     }
     return YSTRUE;
 }
 
-YSBOOL FsCullingUtil::IsSphereVisible(const Frustum &frustum, const YsVec3 &center, const double radius)
+YSBOOL FsCullingUtil::IsSphereVisible(const Frustum &frustum, const YsVec3 &center, const double radius, const double tolerance)
 {
     // Check against each frustum plane
     for (int i = 0; i < 6; i++) {
-        // Only cull if fully outside the frustum
-        if (DistanceToPlane(frustum.planes[i], center) < -radius) {
+        // Only cull if fully outside the frustum (with tolerance)
+        if (DistanceToPlane(frustum.planes[i], center) < -(radius + tolerance)) {
             return YSFALSE;
         }
     }
     return YSTRUE;
 }
 
-YSBOOL FsCullingUtil::IsBoundingBoxVisible(const Frustum &frustum, const YsVec3 bbx[2])
+YSBOOL FsCullingUtil::IsBoundingBoxVisible(const Frustum &frustum, const YsVec3 bbx[2], const double tolerance)
 {
     // Test all 8 corners of the box
     YsVec3 corners[8];
@@ -220,7 +216,7 @@ YSBOOL FsCullingUtil::IsBoundingBoxVisible(const Frustum &frustum, const YsVec3 
     for (int i = 0; i < 6; i++) {
         int outsideCount = 0;
         for (int j = 0; j < 8; j++) {
-            if (DistanceToPlane(frustum.planes[i], corners[j]) < 0) {
+            if (DistanceToPlane(frustum.planes[i], corners[j]) < -tolerance) {
                 outsideCount++;
             }
         }
