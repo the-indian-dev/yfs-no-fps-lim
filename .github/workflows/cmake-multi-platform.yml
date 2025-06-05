@@ -134,8 +134,8 @@ jobs:
           -DCMAKE_SHARED_LINKER_FLAGS="-lopengl32 -lglu32"
 
     - name: Build
-      # Corrected shell selection using ternary operator
-      shell: ${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') ? 'msys2 {0}' : (runner.os == 'Linux' ? 'bash' : 'powershell') }}
+      # Corrected shell selection using ternary operator, with the entire expression quoted
+      shell: '${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') ? 'msys2 {0}' : (runner.os == 'Linux' ? 'bash' : 'powershell') }}'
       run: >
         cmake --build ${{ steps.strings.outputs.build-output-dir }}
         --config ${{ matrix.build_type }}
@@ -144,7 +144,6 @@ jobs:
     - name: Copy icon
       if: success()
       # Bash is generally available via Git Bash on Windows runners, or MSYS2 for MinGW jobs
-      # For simplicity, keeping bash here. If issues arise on MSVC, could use powershell conditional copy.
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
@@ -161,8 +160,8 @@ jobs:
         fi
 
     - name: Test
-      # Corrected shell selection using ternary operator
-      shell: ${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') ? 'msys2 {0}' : (runner.os == 'Linux' ? 'bash' : 'powershell') }}
+      # Corrected shell selection using ternary operator, with the entire expression quoted
+      shell: '${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') ? 'msys2 {0}' : (runner.os == 'Linux' ? 'bash' : 'powershell') }}'
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ctest --build-config ${{ matrix.build_type }} -V
 
