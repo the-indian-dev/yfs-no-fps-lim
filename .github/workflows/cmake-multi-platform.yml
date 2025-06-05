@@ -21,25 +21,18 @@ jobs:
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
-            name_suffix: MSVC
-          - os: windows-latest
-            c_compiler: gcc # MinGW target
-            cpp_compiler: g++
-            name_suffix: MinGW
           - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
-            name_suffix: GCC
           - os: ubuntu-22.04
             c_compiler: clang
             cpp_compiler: clang++
-            name_suffix: Clang
         exclude:
-          # Clang on Windows is not part of this matrix setup
+          - os: windows-latest
+            c_compiler: gcc
           - os: windows-latest
             c_compiler: clang
-          # MSVC (cl) on Linux is not applicable
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             c_compiler: cl
 
     steps:
@@ -61,34 +54,17 @@ jobs:
           libgl1-mesa-dev \
           libglu1-mesa-dev \
           libasound2-dev \
-          libpulse-dev \
-          ninja-build
-
-    - name: Setup MSYS2 for MinGW
-      if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        pacboy: >-
-          toolchain:p
-          cmake:p
-          ninja:p
-          mesa:p
-        # The ':p' suffix for pacboy helps select the correct package for the MINGW64 environment.
-        # E.g., toolchain:p -> mingw-w64-x86_64-toolchain
-        #       mesa:p      -> mingw-w64-x86_64-mesa (provides OpenGL dev files)
+          libpulse-dev
 
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
       working-directory: ${{ github.workspace }}
       shell: bash
       run: |
-        echo "Configuring CMake for Linux with GCC/Clang specific flags using Ninja"
+        echo "Configuring CMake for Linux with GCC/Clang specific flags"
         cmake \
           -S src \
           -B ${{ steps.strings.outputs.build-output-dir }} \
-          -G "Ninja" \
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
@@ -96,13 +72,13 @@ jobs:
           -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
           -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
-    - name: Configure CMake (Windows MSVC)
-      if: runner.os == 'Windows' && matrix.c_compiler == 'cl'
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
       working-directory: ${{ github.workspace }}
-      shell: cmd
+      shell: cmd # Using cmd for Windows
       run: |
         echo "Configuring CMake for Windows (MSVC)"
-        echo "Explicitly linking with opengl32.lib and glu32.lib as CMakeLists.txt is not updated."
+        echo "Attempting to link with opengl32.lib and glu32.lib. For a permanent fix, update your CMakeLists.txt to find and link OpenGL."
         set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
         cmake -S src ^
           -B ${{ steps.strings.outputs.build-output-dir }} ^
@@ -112,47 +88,9 @@ jobs:
           -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
           -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
           -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
+          :: No -Wno-incompatible-pointer-types for MSVC by default.
 
-    - name: Configure CMake (Windows MinGW)
-      if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
-      working-directory: ${{ github.workspace }}
-      shell: msys2 {0}
-      run: |
-        echo "Configuring CMake for Windows (MinGW) using Ninja"
-        echo "Explicitly linking with -lopengl32 -lglu32 as CMakeLists.txt is not updated."
-        cmake \
-          -S src \
-          -B ${{ steps.strings.outputs.build-output-dir }} \
-          -G "Ninja" \
-          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-          -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types" \
-          -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
-          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-          -DCMAKE_EXE_LINKER_FLAGS="-lopengl32 -lglu32" \
-          -DCMAKE_SHARED_LINKER_FLAGS="-lopengl32 -lglu32"
-
-    # --- Build Steps (Conditional) ---
-    - name: Build (Windows MinGW)
-      if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
-      shell: msys2 {0}
-      run: >
-        cmake --build ${{ steps.strings.outputs.build-output-dir }}
-        --config ${{ matrix.build_type }}
-        --parallel
-
-    - name: Build (Linux)
-      if: runner.os == 'Linux'
-      shell: bash
-      run: >
-        cmake --build ${{ steps.strings.outputs.build-output-dir }}
-        --config ${{ matrix.build_type }}
-        --parallel
-
-    - name: Build (Windows MSVC)
-      if: runner.os == 'Windows' && matrix.c_compiler == 'cl'
-      shell: powershell
+    - name: Build
       run: >
         cmake --build ${{ steps.strings.outputs.build-output-dir }}
         --config ${{ matrix.build_type }}
@@ -175,11 +113,15 @@ jobs:
           echo "Warning: Icon not found at $ICON_SOURCE_PATH (expected at ${{ github.workspace }}/$ICON_SOURCE_PATH). Skipping copy."
         fi
 
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ctest --build-config ${{ matrix.build_type }} -V
+
     - name: Upload 'main' directory artifact
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: Main-Build-${{ matrix.os }}-${{ matrix.name_suffix }}-${{ matrix.build_type }}
+        name: Main-Build-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
         path: ${{ steps.strings.outputs.main-output-dir }}
         if-no-files-found: warn
         retention-days: 7
