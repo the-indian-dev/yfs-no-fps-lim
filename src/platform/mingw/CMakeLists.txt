@@ -1,102 +1,22 @@
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	set(BITNESS 64)
-else()
-	set(BITNESS 32)
-endif()
-
-
-
-# Windows -> gl1, gl2, d3d9, nownd
-# Mac OSX -> gl1, gl2
-# Linux   -> gl1, gl2, nownd
-# Android -> gl2
-
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
-	set(TARGET_NAME ysflight${BITNESS}_gl2)
-elseif(MSVC)
-	set(TARGET_NAME ysflight${BITNESS}_gl2 ysflight${BITNESS}_gl1)
-	if(ysd3d9_EXIST)
-		set(TARGET_NAME ${TARGET_NAME} ysflight${BITNESS}_d3d9)
-	endif()
-elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-	# MinGW/MSYS2 GCC compiler - focus on OpenGL
-	set(TARGET_NAME ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
-	message(STATUS "Building YSFlight for MinGW/MSYS2 with OpenGL support")
-elseif(APPLE)
-	set(TARGET_NAME ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
-elseif(ANDROID)
-	set(TARGET_NAME ysflight${BITNESS}_gl2)
-elseif(UNIX)
-	set(TARGET_NAME ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
-else()
-	message(FATAL_ERROR "Unsupported platform.")
-endif()
-
-
-
-set(VERBOSE_MODE 0)
-set(IS_LIBRARY_PROJECT 0)
-set(LIB_DEPENDENCY 
-geblkernel
-geblgl
-ysflight_ui
-ysflight_gui
-ysflight_common
-ysflight_core
-ysflight_pathplanning 
-ysflight_externalconsole 
-ysflight_autopilot 
-ysflight_dynamics
-ysflight_vehicle 
-ysflight_util
-yssocket
-ysflight_graphics_common
-fsguilib
-fsguifiledialog
-ysbitmap
-ysbitmapfont
-ysfontrenderer
-ysport
-ysscenery_dnm
-ystexturemanager
-ysflight_filename
-ysclass
-ysclass11
-ysglcpp
-)
+set(TARGET_NAME ysflight_platform_mingw ysflight_platform_mingw_gl)
+set(IS_LIBRARY_PROJECT 1)
+set(LIB_DEPENDENCY geblkernel ysclass ysport fssimplewindow ysscenery_dnm fsguilib ysbitmapfont ysflight_core ysflight_common ysflight_filename)
 set(INCLUDE_DEPENDENCY)
 set(OWN_HEADER_PATH .)
 set(ADDITIONAL_HEADER_PATH)
 set(SINGLE_TARGET 0)
-set(SUB_FOLDER "YSFLIGHT")
-set(REALLY_NEED_CPP11 1)    # Setting 1 will enable use of C++11 libraries, but lose compatibility with OSX 10.6.
-set(WIN_SUBSYSTEM WINDOWS)
-set(DATA_FILE_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime")
-
-
-if(APPLE)
-	set(EXE_TYPE MACOSX_BUNDLE)
-elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
-	set(EXE_TYPE)
-elseif(MSVC)
-	set(EXE_TYPE)
-elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-	# MinGW/MSYS2 - create console application by default
-	set(EXE_TYPE)
-	set(WIN_SUBSYSTEM CONSOLE)
-else()
-	set(EXE_TYPE)
-endif()
-
-
-if(ysd3d9_EXIST)
-	set(INCLUDE_DEPENDENCY ${INCLUDE_DEPENDENCY} ysd3d)
-endif()
+set(SUB_FOLDER "YSFLIGHT/platform")
+set(REALLY_NEED_CPP11 0)    # Setting 1 will enable use of C++11 libraries, but lose compatibility with OSX 10.6.
+set(DATA_FILE_LOCATION)
 
 
 
-set(YSFLIGHT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-
+# MinGW typically doesn't use D3D9, focus on OpenGL
+# if(ysd3d9_EXIST)
+# 	set(TARGET_NAME ${TARGET_NAME} ysflight_platform_mingw_d3d9)
+# 	set(LIB_DEPENDENCY ${LIB_DEPENDENCY} ysd3d9 ysflight_graphics_d3d9)
+# 	set(INCLUDE_DEPENDENCY ${INCLUDE_DEPENDENCY} ysd3d9 ysflight_graphics_d3d9)
+# endif()
 
 
 
@@ -211,6 +131,12 @@ elseif(APPLE)
 
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.9 -Wno-switch")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=10.9 -Wno-switch")
+elseif(MINGW OR (WIN32 AND CMAKE_COMPILER_IS_GNUCXX))
+	# MinGW/MSYS2 GCC specific flags
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
+	# Enable Windows-specific definitions
+	add_definitions(-DWIN32 -D_WIN32)
 elseif(UNIX)
 	# -Wl,--no-as-needed required for g++ 4.8.4 Confirmed unnecessary with 5.4.0
 	#  http://stackoverflow.com/questions/19463602/compiling-multithread-code-with-g
@@ -231,105 +157,41 @@ endif()
 
 
 if(MSVC)
-	set(OS_LIBRARIES 
-		kernel32.lib 
-		user32.lib 
-		comdlg32.lib 
-		urlmon.lib 
-		gdi32.lib 
-		winmm.lib 
-		ddraw.lib 
-		advapi32.lib 
-		wsock32.lib 
-		shell32.lib 
-		opengl32.lib 
-		glu32.lib 
-		opengl32.lib 
-		glu32.lib
-	)
-	set(platform_SRCS hotasrc.rc)
+	set(platform_SRCS "")
 	set(platform_HEADERS "")
 elseif(APPLE)
-	set(OS_LIBRARIES 
-		""
-	)
-	set(platform_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/../platform/macosx/APPL.icns)
-	set_source_files_properties(../platform/macosx/APPL.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-	set(platform_HEADERS "")
-elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-	# MinGW/MSYS2 GCC compiler
-	set(OS_LIBRARIES 
-		kernel32 
-		user32 
-		gdi32 
-		winspool 
-		comdlg32 
-		advapi32 
-		shell32 
-		ole32 
-		oleaut32 
-		uuid 
-		odbc32 
-		odbccp32
-		wsock32
-		ws2_32
-		winmm
-		opengl32
-		glu32
-	)
 	set(platform_SRCS "")
 	set(platform_HEADERS "")
 elseif(UNIX)
-	set(OS_LIBRARIES 
-		""
-	)
 	set(platform_SRCS "")
 	set(platform_HEADERS "")
 else()
-	set(OS_LIBRARIES 
-		""
-	)
 	set(platform_SRCS "")
 	set(platform_HEADERS "")
 endif()
 
 
 
-
-#tentative
 set(SRCS
 ${platform_SRCS}
 )
 
 set(HEADERS
 ${platform_HEADERS}
-resource.h
 )
 
 
-if(ysd3d9_EXIST)
-	add_executable(ysflight${BITNESS}_d3d9 fsmain.cpp ${SRCS})
-	target_link_libraries(ysflight${BITNESS}_d3d9 
-		ysflight_platform_win32 
-		ysflight_platform_win32_d3d9 
-		ysscenery_dnm_d3d 
-		ystexturemanager_d3d9
-		fsguilib_d3d9
-		geblgl_d3d9
-		ysglcpp_d3d9
-		fslazywindow
-		${OS_LIBRARIES} 
-	)
-	# d3d9.lib will be linked from ysd3d9.lib
-endif()
+add_library(ysflight_platform_mingw fsairsound.cpp fsdialog.cpp fswin32.cpp fswin32joystick.cpp fswin32windowhandle.cpp)#fswin32entry.cpp will be covered by FsSimpleWindow
 
+add_library(ysflight_platform_mingw_gl fswin32gl.cpp)
 
-if(NOT ANDROID)
-	add_executable(ysflight${BITNESS}_gl2 ${EXE_TYPE} fsmain.cpp ${SRCS})
-	add_executable(ysflight${BITNESS}_gl1 ${EXE_TYPE} fsmain.cpp ${SRCS})
-else()
-	add_library(ysflight${BITNESS}_gl2 ${EXE_TYPE} fsmain.cpp ${SRCS})
-endif()
+# MinGW typically doesn't use D3D9, focus on OpenGL
+# if(ysd3d9_EXIST)
+# 	add_library(ysflight_platform_mingw_d3d9 fswin32d3d.cpp)
+# endif()
+
+include_directories(../..)
+
 
 
 
@@ -418,6 +280,9 @@ foreach(ONE_TARGET ${TARGET_NAME})
 	# We suffered enough from the shared stdc++
 	if(UNIX AND NOT APPLE AND NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
 		target_link_libraries(${ONE_TARGET} pthread -static-libstdc++ -static-libgcc)
+	elseif(MINGW OR (WIN32 AND CMAKE_COMPILER_IS_GNUCXX))
+		# MinGW specific linking
+		target_link_libraries(${ONE_TARGET} -static-libgcc -static-libstdc++ -lwsock32 -lws2_32 -lwinmm -lgdi32 -lopengl32 -lglu32)
 	endif()
 
 	if(ADDITIONAL_HEADER_PATH)
@@ -500,194 +365,3 @@ if(DATA_FILE_LOCATION)
 endif()
 
 #YSEND
-
-
-
-set(DLL_PROJS "")
-set(NEED_DLL_TARGETS "")
-
-# fsguilib_gl1, fsguilib_gl2 must be added after fsguilib due to gcc's link-order restriction, which I think is very dumb.
-if(MSVC)
-	target_link_libraries(ysflight${BITNESS}_gl1 
-		ysgl
-		yssystemfont
-		fsguilib_gl1
-		ysflight_platform_win32 
-		ysflight_platform_win32_gl 
-		ysflight_graphics_gl1 
-		ysscenery_dnm_gl1
-		ystexturemanager_gl
-		geblgl_gl1
-		ysglcpp_gl1
-		fslazywindow
-		${OS_LIBRARIES}
-	)
-	target_link_libraries(ysflight${BITNESS}_gl2 
-		ysgl
-		yssystemfont
-		fsguilib_gl2 
-		ysflight_platform_win32 
-		ysflight_platform_win32_gl 
-		ysflight_graphics_gl2
-		ysscenery_dnm_gl2
-		ystexturemanager_gl
-		geblgl_gl2
-		ysglcpp
-		ysglcpp_gl2
-		fslazywindow
-		${OS_LIBRARIES}
-	)
-
-	set(DLL_PROJS sndYsflight${BITNESS} voiceYsflight${BITNESS})
-	set(NEED_DLL_TARGETS ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
-elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-	# MinGW/MSYS2 GCC compiler
-	target_link_libraries(ysflight${BITNESS}_gl1 
-		ysgl
-		yssystemfont
-		fsguilib_gl1
-		ysflight_platform_mingw 
-		ysflight_platform_mingw_gl 
-		ysflight_graphics_gl1 
-		ysscenery_dnm_gl1
-		ystexturemanager_gl
-		geblgl_gl1
-		ysglcpp_gl1
-		fslazywindow
-		${OS_LIBRARIES}
-	)
-	target_link_libraries(ysflight${BITNESS}_gl2 
-		ysgl
-		yssystemfont
-		fsguilib_gl2 
-		ysflight_platform_mingw 
-		ysflight_platform_mingw_gl 
-		ysflight_graphics_gl2
-		ysscenery_dnm_gl2
-		ystexturemanager_gl
-		geblgl_gl2
-		ysglcpp
-		ysglcpp_gl2
-		fslazywindow
-		${OS_LIBRARIES}
-	)
-
-	set(DLL_PROJS sndYsflight${BITNESS} voiceYsflight${BITNESS})
-	set(NEED_DLL_TARGETS ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
-elseif(APPLE)
-	target_link_libraries(ysflight${BITNESS}_gl1 
-		ysgl
-		yssystemfont
-		fsguilib_gl1
-		ysflight_platform_macosx
-		ysflight_graphics_gl1
-		ysscenery_dnm_gl1
-		ystexturemanager_gl
-		${OS_LIBRARIES}
-		ysjoystick
-		ysjoycalibdlg_gl1
-		geblgl_gl1
-		ysglcpp_gl1
-		fslazywindow
-	)
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME ysflight)
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_ICON_FILE APPL.icns)
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_INFO_STRING "YS Flight Simulator")
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER com.YSFLIGHT.YsFlightSimulator)
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_LONG_VERSION_STRING 20141222)
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING 20141222)
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_BUNDLE_VERSION 20141222)
-	set_target_properties(ysflight${BITNESS}_gl1 PROPERTIES MACOSX_BUNDLE_COPYRIGHT "Copyright CaptainYS")
-
-	target_link_libraries(ysflight${BITNESS}_gl2 
-		ysgl
-		yssystemfont
-		fsguilib_gl2
-		ysflight_platform_macosx
-		ysflight_graphics_gl2
-		ysscenery_dnm_gl2
-		ystexturemanager_gl
-		${OS_LIBRARIES}
-		ysjoystick
-		ysjoycalibdlg_gl2
-		geblgl_gl2
-		ysglcpp_gl2
-		fslazywindow
-	)
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME ysflight)
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_ICON_FILE APPL.icns)
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_INFO_STRING "YS Flight Simulator")
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER com.YSFLIGHT.YsFlightSimulator)
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_LONG_VERSION_STRING 20141222)
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING 20141222)
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_BUNDLE_VERSION 20141222)
-	set_target_properties(ysflight${BITNESS}_gl2 PROPERTIES MACOSX_BUNDLE_COPYRIGHT "Copyright CaptainYS")
-
-	set(DLL_PROJS sndYsflight${BITNESS} voiceYsflight${BITNESS})
-	set(NEED_DLL_TARGETS ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
-elseif(ANDROID)
-	target_link_libraries(ysflight${BITNESS}_gl2 
-		ysgl
-		yssystemfont
-		fsguilib_gl2 
-		ysflight_platform_android 
-		ysscenery_dnm_gl2
-		ystexturemanager_gl
-		${OS_LIBRARIES}
-		ysjoystick
-		ysjoycalibdlg_gl2
-		ysflight_graphics_gl2
-		fslazywindow
-	)
-elseif(UNIX)
-	target_link_libraries(ysflight${BITNESS}_gl1 
-		ysgl
-		yssystemfont
-		fsguilib_gl1
-		ysflight_platform_linux 
-		ysscenery_dnm_gl1
-		ystexturemanager_gl
-		${OS_LIBRARIES}
-		ysjoystick
-		ysjoycalibdlg_gl1
-		ysflight_graphics_gl1 
-		fslazywindow
-	)
-	target_link_libraries(ysflight${BITNESS}_gl2 
-		ysgl
-		yssystemfont
-		fsguilib_gl2 
-		ysflight_platform_linux 
-		ysscenery_dnm_gl2
-		ystexturemanager_gl
-		${OS_LIBRARIES}
-		ysjoystick
-		ysjoycalibdlg_gl2
-		ysflight_graphics_gl2
-		fslazywindow
-	)
-
-	set(DLL_PROJS sndYsflight${BITNESS} sndYsflight${BITNESS}-pulse voiceYsflight${BITNESS})
-	set(NEED_DLL_TARGETS ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
-endif()
-
-
-
-foreach(ONE_TARGET ${NEED_DLL_TARGETS})
-	get_property(DATA_DESTINATION TARGET ${ONE_TARGET} PROPERTY YS_DATA_COPY_DIR)
-	add_dependencies(${ONE_TARGET} ${DLL_PROJS})
-	foreach(DLL_TARGET ${DLL_PROJS})
-		add_custom_command(TARGET ${ONE_TARGET} POST_BUILD 
-			COMMAND echo For ${ONE_TARGET}
-			COMMAND echo DLL $<TARGET_FILE:${DLL_TARGET}>
-			COMMAND "${CMAKE_COMMAND}" -E copy \"$<TARGET_FILE:${DLL_TARGET}>\" \"${DATA_DESTINATION}/plugin/.\"
-			)
-	endforeach(DLL_TARGET)
-endforeach(ONE_TARGET)
-
-
-
-foreach(ONE_TARGET ${TARGET_NAME})
-	add_custom_command(TARGET ${ONE_TARGET} PRE_BUILD 
-		COMMAND "python" "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/runtime_timestamp.py" "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime")
-endforeach(ONE_TARGET)

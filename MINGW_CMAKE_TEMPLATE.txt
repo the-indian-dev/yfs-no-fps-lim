@@ -1,0 +1,109 @@
+# MinGW/MSYS2 CMake Template for YSFlight Components
+# Add this pattern to CMakeLists.txt files that need MinGW support
+
+# 1. MinGW Detection Pattern (add near top of CMakeLists.txt)
+if(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    set(MINGW TRUE)
+    message(STATUS "Detected MinGW/MSYS2 GCC compiler")
+endif()
+
+# 2. Platform-specific Library Dependencies
+if(MSVC)
+    # MSVC libraries (use .lib extension)
+    set(LIB_DEPENDENCY user32.lib winmm.lib kernel32.lib dsound.lib)
+elseif(MINGW)
+    # MinGW libraries (no .lib extension)
+    set(LIB_DEPENDENCY user32 winmm kernel32 dsound)
+endif()
+
+# 3. Compiler Flags Section
+if(MSVC)
+    # MSVC-specific flags
+elseif(APPLE)
+    # Apple-specific flags
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.9 -Wno-switch")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=10.9 -Wno-switch")
+elseif(MINGW)
+    # MinGW/MSYS2 GCC specific flags
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
+    # Enable Windows-specific definitions
+    add_definitions(-DWIN32 -D_WIN32)
+elseif(UNIX)
+    # Unix/Linux flags
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--no-as-needed")
+endif()
+
+# 4. Platform-specific Subdirectories (main src/CMakeLists.txt)
+if(MSVC)
+    add_subdirectory(platform/win32)
+    add_subdirectory(sounddll/win32)
+    add_subdirectory(voicedll/generic)
+elseif(MINGW)
+    add_subdirectory(platform/mingw)
+    add_subdirectory(sounddll/win32)
+    add_subdirectory(voicedll/generic)
+elseif(APPLE)
+    add_subdirectory(platform/macosx)
+    add_subdirectory(sounddll/macosx)
+    add_subdirectory(voicedll/generic)
+elseif(UNIX)
+    add_subdirectory(platform/linux)
+    add_subdirectory(sounddll/linux-alsa)
+    add_subdirectory(sounddll/linux-pulseaudio)
+    add_subdirectory(voicedll/generic)
+endif()
+
+# 5. Target Names for Executables
+if(MSVC)
+    set(TARGET_NAME ysflight${BITNESS}_gl2 ysflight${BITNESS}_gl1)
+    if(ysd3d9_EXIST)
+        set(TARGET_NAME ${TARGET_NAME} ysflight${BITNESS}_d3d9)
+    endif()
+elseif(MINGW)
+    # MinGW/MSYS2 - focus on OpenGL, no D3D9
+    set(TARGET_NAME ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
+    message(STATUS "Building YSFlight for MinGW/MSYS2 with OpenGL support")
+elseif(APPLE)
+    set(TARGET_NAME ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
+elseif(UNIX)
+    set(TARGET_NAME ysflight${BITNESS}_gl1 ysflight${BITNESS}_gl2)
+endif()
+
+# 6. Linking Section
+foreach(ONE_TARGET ${TARGET_NAME})
+    # ... target creation code ...
+    
+    # Platform-specific linking
+    if(UNIX AND NOT APPLE AND NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+        target_link_libraries(${ONE_TARGET} pthread -static-libstdc++ -static-libgcc)
+    elseif(MINGW)
+        # MinGW specific linking
+        target_link_libraries(${ONE_TARGET} -static-libgcc -static-libstdc++ -lwsock32 -lws2_32 -lwinmm -lgdi32 -lopengl32 -lglu32)
+    endif()
+endforeach(ONE_TARGET)
+
+# 7. Platform Library Linking for Main Executable
+if(MSVC)
+    target_link_libraries(ysflight${BITNESS}_gl1 
+        # ... other libraries ...
+        ysflight_platform_win32 
+        ysflight_platform_win32_gl 
+        # ... more libraries ...
+    )
+elseif(MINGW)
+    target_link_libraries(ysflight${BITNESS}_gl1 
+        # ... other libraries ...
+        ysflight_platform_mingw 
+        ysflight_platform_mingw_gl 
+        # ... more libraries ...
+    )
+endif()
+
+# Notes:
+# - Replace library names accordingly (.lib vs no extension)
+# - Use ysflight_platform_mingw instead of ysflight_platform_win32
+# - Static linking preferred for MinGW to avoid DLL dependencies
+# - OpenGL is preferred over D3D9 for MinGW builds
+# - Common Windows libraries: user32, winmm, kernel32, wsock32, ws2_32, gdi32, opengl32, glu32
