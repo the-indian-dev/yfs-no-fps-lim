@@ -6798,6 +6798,14 @@ void FsSimulation::SimDrawScreenZBufferSensitive(
 		solidCloud->Draw(env,*weather,actualViewMode.viewMat,proj.nearz,proj.farz,proj.tanFov);
 	}
 
+	// Draw rain effects in 3D world space if it's raining
+	if(weather->IsRaining() == YSTRUE)
+	{
+		YsVec3 cameraDir;
+		actualViewMode.viewAttitude.Mul(cameraDir, YsVec3(0.0, 0.0, -1.0));
+		weather->DrawRainWithTerrain(actualViewMode.viewPoint, cameraDir, this);
+	}
+
 #ifdef CRASHINVESTIGATION_SIMDRAWSCREENZBUFFERSENSITIVE
 	printf("SimDrawScreenZBufferSensitive %d\n",__LINE__);
 #endif
@@ -7050,16 +7058,7 @@ void FsSimulation::SimDrawBackground(const ActualViewMode &actualViewMode,const 
 		groundSky->DrawGroundMesh(actualViewMode.viewPoint,actualViewMode.viewAttitude,gnd,div,gndSpecular);
 	}
 
-	// Draw rain effects if it's raining
-	if(weather->IsRaining() == YSTRUE)
-	{
-		// Draw storm clouds first (background)
-		weather->DrawCloudLayer(actualViewMode.viewPoint);
 
-		YsVec3 cameraDir;
-		actualViewMode.viewAttitude.Mul(cameraDir, YsVec3(0.0, 0.0, -1.0));
-		weather->DrawRainWithTerrain(actualViewMode.viewPoint, cameraDir, this);
-	}
 }
 
 void FsSimulation::SimDrawMap(const ActualViewMode &actualViewMode,const FsProjection &proj,const double &elvMin,const double &elvMax) const

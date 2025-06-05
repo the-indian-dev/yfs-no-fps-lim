@@ -583,99 +583,95 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 		p.life += dt;
 		p.position += p.velocity * dt;
 
-		// Check ground collision using actual terrain height
+		// Check ground collision with visual ground mesh (always at Y=0)
+		// The visual ground mesh is rendered at Y=0 regardless of terrain elevation
 		double groundLevel = 0.0;
-		if(sim != nullptr)
-		{
-			groundLevel = sim->GetFieldElevation(p.position.x(), p.position.z());
-		}
-
-		if(!p.hitGround && p.position.y() <= groundLevel + 0.5)
+		
+		if(!p.hitGround && p.position.y() <= groundLevel + 1.0)
 		{
 			p.hitGround = true;
 			p.splashPos = p.position;
-			p.splashPos.SetY(groundLevel);
+			p.splashPos.SetY(groundLevel + 0.1);
 			p.splashLife = 0.0f;
-
-			// Wetness effects disabled to prevent ground rendering issues
-			// AddWetnessPoint(p.splashPos, rainIntensity * 0.8f);
 		}
-
-		// Remove particle if too old or hit ground
-		if(p.life >= p.maxLife || (p.hitGround && p.splashLife > 0.3f))
+		
+		// Remove particle if too old or if it's been on ground too long
+		if(p.life >= p.maxLife || (p.hitGround && p.splashLife > 0.5f))
 		{
 			p.active = false;
 			continue;
 		}
 
-		// Render falling raindrop with LOD
-		if(!p.hitGround)
-		{
-			float alpha = (800.0f - p.distanceFromCamera) / 800.0f;
-			alpha *= (float)rainIntensity;
-			alpha = YsBound(alpha, 0.0f, 0.95f);
+		// Render raindrop (both falling and hitting ground)
+		float alpha = (1200.0f - p.distanceFromCamera) / 1200.0f;
+		alpha *= (float)rainIntensity;
+		alpha = YsBound(alpha, 0.0f, 0.95f);
 
-			if(alpha > 0.02f)
+		if(alpha > 0.02f)
+		{
+			if(!p.hitGround)
 			{
-				// Color varies with distance for atmospheric perspective
+				// Falling raindrop
 				float colorIntensity = 0.85f + (1.0f - p.distanceFromCamera / 1200.0f) * 0.15f;
 				glColor4f(colorIntensity, colorIntensity + 0.05f, 1.0f, alpha);
-
+				
 				// Draw raindrop as a short line with size based on distance
 				double lineLength = p.size * 3.0;
-				if(p.distanceFromCamera > 600.0) lineLength *= 0.8; // Less aggressive size reduction
-
+				if(p.distanceFromCamera > 600.0) lineLength *= 0.8;
+				
 				YsVec3 normalizedVel = p.velocity;
 				normalizedVel.Normalize();
 				YsVec3 dropEnd = p.position + normalizedVel * lineLength;
-
+				
 				glVertex3d(p.position.x(), p.position.y(), p.position.z());
 				glVertex3d(dropEnd.x(), dropEnd.y(), dropEnd.z());
+			}
+			else if(p.splashLife < 0.15f)
+			{
+				// Ground impact effect - small upward splash
+				float splashAlpha = alpha * (0.15f - p.splashLife) / 0.15f;
+				glColor4f(0.7f, 0.8f, 0.95f, splashAlpha);
+				
+				// Small vertical line for splash effect
+				glVertex3d(p.splashPos.x(), p.splashPos.y(), p.splashPos.z());
+				glVertex3d(p.splashPos.x(), p.splashPos.y() + 1.5, p.splashPos.z());
 			}
 		}
 	}
 
 	glEnd();
 
-	// Render ground splash effects
-	glPointSize(2.0f);
+	// Update splash life for all particles
+	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+	{
+		if(rainParticles[i].active && rainParticles[i].hitGround)
+		{
+			rainParticles[i].splashLife += dt;
+		}
+	}
+	
+	glEnd();
+	
+	// Additional ground impact points for better visibility
+	glPointSize(1.5f);
 	glBegin(GL_POINTS);
-
+	
 	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
 	{
 		if(!rainParticles[i].active || !rainParticles[i].hitGround) continue;
-
+		
 		RainParticle &p = rainParticles[i];
-		p.splashLife += dt;
-
-		if(p.splashLife < 0.2f)
+		
+		if(p.splashLife < 0.1f && p.distanceFromCamera < 150.0)
 		{
-			double distanceFromCamera = (p.splashPos - cameraPos).GetLength();
-			if(distanceFromCamera < 200.0)
-			{
-				float splashAlpha = (0.2f - p.splashLife) / 0.2f;
-				splashAlpha *= (float)rainIntensity * 0.8f;
-
-				glColor4f(0.7f, 0.8f, 0.9f, splashAlpha);
-				glVertex3d(p.splashPos.x(), p.splashPos.y() + 0.1, p.splashPos.z());
-
-				// Add small splash particles around impact point
-				for(int j = 0; j < 3; j++)
-				{
-					double splashAngle = (rand() % 360) * YsPi / 180.0;
-					double splashDist = (rand() % 3) * 0.5;
-					YsVec3 splashPoint = p.splashPos;
-					splashPoint.AddX(cos(splashAngle) * splashDist);
-					splashPoint.AddZ(sin(splashAngle) * splashDist);
-					splashPoint.AddY(0.05 + (rand() % 3) * 0.02);
-
-					glColor4f(0.6f, 0.7f, 0.85f, splashAlpha * 0.6f);
-					glVertex3d(splashPoint.x(), splashPoint.y(), splashPoint.z());
-				}
-			}
+			float splashAlpha = (0.1f - p.splashLife) / 0.1f;
+			splashAlpha *= (float)rainIntensity * 0.6f;
+			
+			glColor4f(0.8f, 0.85f, 0.95f, splashAlpha);
+			glVertex3d(p.splashPos.x(), p.splashPos.y() + 0.05, p.splashPos.z());
 		}
 	}
-
+	
 	glEnd();
 
 	// Wetness effects completely disabled to prevent ground rendering issues
