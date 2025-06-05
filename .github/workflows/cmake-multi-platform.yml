@@ -62,19 +62,22 @@ jobs:
           libglu1-mesa-dev \
           libasound2-dev \
           libpulse-dev \
-          ninja-build # Added for -G Ninja
+          ninja-build
 
     - name: Setup MSYS2 for MinGW
       if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64 # Use the MINGW64 environment
+        msystem: MINGW64
         update: true
         pacboy: >-
           toolchain:p
           cmake:p
           ninja:p
-          mesa:p # Installs mingw-w64-x86_64-toolchain, -cmake, -ninja, -mesa (for opengl32, glu32)
+          mesa:p
+        # The ':p' suffix for pacboy helps select the correct package for the MINGW64 environment.
+        # E.g., toolchain:p -> mingw-w64-x86_64-toolchain
+        #       mesa:p      -> mingw-w64-x86_64-mesa (provides OpenGL dev files)
 
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
@@ -96,7 +99,7 @@ jobs:
     - name: Configure CMake (Windows MSVC)
       if: runner.os == 'Windows' && matrix.c_compiler == 'cl'
       working-directory: ${{ github.workspace }}
-      shell: cmd # Using cmd for Windows MSVC
+      shell: cmd
       run: |
         echo "Configuring CMake for Windows (MSVC)"
         echo "Explicitly linking with opengl32.lib and glu32.lib as CMakeLists.txt is not updated."
@@ -113,7 +116,7 @@ jobs:
     - name: Configure CMake (Windows MinGW)
       if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
       working-directory: ${{ github.workspace }}
-      shell: msys2 {0} # Run in MSYS2 environment
+      shell: msys2 {0}
       run: |
         echo "Configuring CMake for Windows (MinGW) using Ninja"
         echo "Explicitly linking with -lopengl32 -lglu32 as CMakeLists.txt is not updated."
@@ -149,15 +152,15 @@ jobs:
 
     - name: Build (Windows MSVC)
       if: runner.os == 'Windows' && matrix.c_compiler == 'cl'
-      shell: powershell # Using PowerShell for MSVC, cmd would also work
+      shell: powershell
       run: >
         cmake --build ${{ steps.strings.outputs.build-output-dir }}
         --config ${{ matrix.build_type }}
         --parallel
 
     - name: Copy icon
-      if: success() # Runs if the active build step (based on matrix) succeeded
-      shell: bash # Bash is generally available on Windows runners via Git Bash
+      if: success()
+      shell: bash
       working-directory: ${{ github.workspace }}
       run: |
         ICON_SOURCE_PATH="src/misc/logo.png"
@@ -171,7 +174,7 @@ jobs:
         else
           echo "Warning: Icon not found at $ICON_SOURCE_PATH (expected at ${{ github.workspace }}/$ICON_SOURCE_PATH). Skipping copy."
         fi
-        
+
     - name: Upload 'main' directory artifact
       if: success()
       uses: actions/upload-artifact@v4
