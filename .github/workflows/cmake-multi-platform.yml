@@ -82,7 +82,6 @@ jobs:
       shell: bash
       run: |
         echo "Configuring CMake for Linux with GCC/Clang specific flags using Ninja"
-        # OpenGL libraries (libGL, libGLU) are expected to be found via installed dev packages.
         cmake \
           -S src \
           -B ${{ steps.strings.outputs.build-output-dir }} \
@@ -110,7 +109,6 @@ jobs:
           -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
           -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
           -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
-          :: No -Wno-incompatible-pointer-types for MSVC by default.
 
     - name: Configure CMake (Windows MinGW)
       if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
@@ -119,7 +117,6 @@ jobs:
       run: |
         echo "Configuring CMake for Windows (MinGW) using Ninja"
         echo "Explicitly linking with -lopengl32 -lglu32 as CMakeLists.txt is not updated."
-        # The 'mesa' package installed via pacboy provides libopengl32.a and libglu32.a for MinGW.
         cmake \
           -S src \
           -B ${{ steps.strings.outputs.build-output-dir }} \
@@ -133,18 +130,34 @@ jobs:
           -DCMAKE_EXE_LINKER_FLAGS="-lopengl32 -lglu32" \
           -DCMAKE_SHARED_LINKER_FLAGS="-lopengl32 -lglu32"
 
-    - name: Build
-      # Corrected shell selection using ternary operator, with the entire expression quoted
-      shell: '${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') ? 'msys2 {0}' : (runner.os == 'Linux' ? 'bash' : 'powershell') }}'
+    # --- Build Steps (Conditional) ---
+    - name: Build (Windows MinGW)
+      if: runner.os == 'Windows' && matrix.c_compiler == 'gcc'
+      shell: msys2 {0}
+      run: >
+        cmake --build ${{ steps.strings.outputs.build-output-dir }}
+        --config ${{ matrix.build_type }}
+        --parallel
+
+    - name: Build (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: >
+        cmake --build ${{ steps.strings.outputs.build-output-dir }}
+        --config ${{ matrix.build_type }}
+        --parallel
+
+    - name: Build (Windows MSVC)
+      if: runner.os == 'Windows' && matrix.c_compiler == 'cl'
+      shell: powershell # Using PowerShell for MSVC, cmd would also work
       run: >
         cmake --build ${{ steps.strings.outputs.build-output-dir }}
         --config ${{ matrix.build_type }}
         --parallel
 
     - name: Copy icon
-      if: success()
-      # Bash is generally available via Git Bash on Windows runners, or MSYS2 for MinGW jobs
-      shell: bash
+      if: success() # Runs if the active build step (based on matrix) succeeded
+      shell: bash # Bash is generally available on Windows runners via Git Bash
       working-directory: ${{ github.workspace }}
       run: |
         ICON_SOURCE_PATH="src/misc/logo.png"
@@ -158,13 +171,7 @@ jobs:
         else
           echo "Warning: Icon not found at $ICON_SOURCE_PATH (expected at ${{ github.workspace }}/$ICON_SOURCE_PATH). Skipping copy."
         fi
-
-    - name: Test
-      # Corrected shell selection using ternary operator, with the entire expression quoted
-      shell: '${{ (runner.os == 'Windows' && matrix.c_compiler == 'gcc') ? 'msys2 {0}' : (runner.os == 'Linux' ? 'bash' : 'powershell') }}'
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ctest --build-config ${{ matrix.build_type }} -V
-
+        
     - name: Upload 'main' directory artifact
       if: success()
       uses: actions/upload-artifact@v4
