@@ -251,7 +251,8 @@ typedef enum
 enum FSENVIRONMENT
 {
 	FSDAYLIGHT,
-	FSNIGHT
+	FSNIGHT,
+	FSSUNSET
 };
 
 const int FsMaxNumSubWindow=2;

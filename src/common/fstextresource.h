@@ -152,6 +152,7 @@ inline const wchar_t *FsGetTextResource(const char *key,const wchar_t *alternati
 #define FSGUI_NEWFLTDLG_SPECIFYENVIRON                    FsGetTextResource("newfltdlg/specifyenvironment",L"Specify Environment")
 #define FSGUI_NEWFLTDLG_DAY                               FsGetTextResource("newfltdlg/day",L"Day")
 #define FSGUI_NEWFLTDLG_NIGHT                             FsGetTextResource("newfltdlg/night",L"Night")
+#define FSGUI_NEWFLTDLG_SUNSET                            FsGetTextResource("newfltdlg/sunset",L"Sunset")
 #define FSGUI_NEWFLTDLG_WEATHER                           FsGetTextResource("newfltdlg/weather",L"Weather")
 #define FSGUI_NEWFLTDLG_WEATHERTYPE                       FsGetTextResource("newfltdlg/weathertype",L"Weather Type")
 #define FSGUI_NEWFLTDLG_CLEAR                             FsGetTextResource("newfltdlg/clear",L"Clear")

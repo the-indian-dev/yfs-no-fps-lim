@@ -318,25 +318,19 @@ void FsWeather::SetWeatherType(FSWEATHERTYPE type)
 	{
 		isRaining = YSTRUE;
 		rainIntensity = 0.9;
-		// Darker but not too dark sky colors for better visibility
-		skyColor.Set(0.12, 0.18, 0.25);  // Dark stormy sky but lighter
-		fogColor.Set(0.25, 0.3, 0.35);   // Lighter atmospheric fog
+		// Much darker, more atmospheric rain colors
+		skyColor.Set(0.08, 0.12, 0.18);  // Very dark stormy sky
+		fogColor.Set(0.15, 0.18, 0.22);  // Dark atmospheric fog
 
-		// Don't force fog visibility - let user settings control it
-		// if(fogVisibility > 5000.0)
-		// {
-		//	SetFogVisibility(5000.0);
-		// }
 
 		// Add default storm cloud layers if none exist
 		if(cloudLayer.GetN() == 0)
 		{
 			FsWeatherCloudLayer stormClouds;
 			stormClouds.cloudLayerType = FSCLOUDLAYER_OVERCAST;
-			stormClouds.y0 = 50000.0;   // Cloud base
-			stormClouds.y1 = 70000.0;  // Cloud top
+			stormClouds.y0 = 40000.0;   // Lower cloud base
+			stormClouds.y1 = 80000.0;   // Higher cloud top for thicker clouds
 			cloudLayer.Append(stormClouds);
-			//cloudLayer.Set(0, NULL);
 		}
 	}
 	else
@@ -586,7 +580,7 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 		// Check ground collision with visual ground mesh (always at Y=0)
 		// The visual ground mesh is rendered at Y=0 regardless of terrain elevation
 		double groundLevel = 0.0;
-		
+
 		if(!p.hitGround && p.position.y() <= groundLevel + 1.0)
 		{
 			p.hitGround = true;
@@ -594,7 +588,7 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 			p.splashPos.SetY(groundLevel + 0.1);
 			p.splashLife = 0.0f;
 		}
-		
+
 		// Remove particle if too old or if it's been on ground too long
 		if(p.life >= p.maxLife || (p.hitGround && p.splashLife > 0.5f))
 		{
@@ -614,15 +608,15 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 				// Falling raindrop
 				float colorIntensity = 0.85f + (1.0f - p.distanceFromCamera / 1200.0f) * 0.15f;
 				glColor4f(colorIntensity, colorIntensity + 0.05f, 1.0f, alpha);
-				
+
 				// Draw raindrop as a short line with size based on distance
 				double lineLength = p.size * 3.0;
 				if(p.distanceFromCamera > 600.0) lineLength *= 0.8;
-				
+
 				YsVec3 normalizedVel = p.velocity;
 				normalizedVel.Normalize();
 				YsVec3 dropEnd = p.position + normalizedVel * lineLength;
-				
+
 				glVertex3d(p.position.x(), p.position.y(), p.position.z());
 				glVertex3d(dropEnd.x(), dropEnd.y(), dropEnd.z());
 			}
@@ -631,7 +625,7 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 				// Ground impact effect - small upward splash
 				float splashAlpha = alpha * (0.15f - p.splashLife) / 0.15f;
 				glColor4f(0.7f, 0.8f, 0.95f, splashAlpha);
-				
+
 				// Small vertical line for splash effect
 				glVertex3d(p.splashPos.x(), p.splashPos.y(), p.splashPos.z());
 				glVertex3d(p.splashPos.x(), p.splashPos.y() + 1.5, p.splashPos.z());
@@ -649,29 +643,29 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 			rainParticles[i].splashLife += dt;
 		}
 	}
-	
+
 	glEnd();
-	
+
 	// Additional ground impact points for better visibility
 	glPointSize(1.5f);
 	glBegin(GL_POINTS);
-	
+
 	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
 	{
 		if(!rainParticles[i].active || !rainParticles[i].hitGround) continue;
-		
+
 		RainParticle &p = rainParticles[i];
-		
+
 		if(p.splashLife < 0.1f && p.distanceFromCamera < 150.0)
 		{
 			float splashAlpha = (0.1f - p.splashLife) / 0.1f;
 			splashAlpha *= (float)rainIntensity * 0.6f;
-			
+
 			glColor4f(0.8f, 0.85f, 0.95f, splashAlpha);
 			glVertex3d(p.splashPos.x(), p.splashPos.y() + 0.05, p.splashPos.z());
 		}
 	}
-	
+
 	glEnd();
 
 	// Wetness effects completely disabled to prevent ground rendering issues

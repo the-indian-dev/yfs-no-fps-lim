@@ -1489,6 +1489,11 @@ void FsSimulation::EnforceEnvironment(void)
 		fogColor.SetDoubleRGB(0.1,0.1,0.1);
 		YsScenery::lightPointSizePix=4;
 		break;
+	case FSSUNSET:
+		field.ApplyColorScale(0.9,0.8,0.7);
+		fogColor.SetDoubleRGB(0.8,0.4,0.2); // Darker orange fog
+		YsScenery::lightPointSizePix=2;
+		break;
 	}
 }
 
@@ -6723,6 +6728,9 @@ void FsSimulation::SimDrawScreenZBufferSensitive(
 	case FSNIGHT:
 		fogColor.SetDoubleRGB(0.1,0.1,0.1);
 		break;
+	case FSSUNSET:
+		fogColor.SetDoubleRGB(0.8,0.4,0.2); // Darker orange fog
+		break;
 	}
 
 #ifdef CRASHINVESTIGATION_SIMDRAWSCREENZBUFFERSENSITIVE
@@ -7013,6 +7021,12 @@ void FsSimulation::SimDrawBackground(const ActualViewMode &actualViewMode,const 
 		case FSDAYLIGHT:
 			horizonColor.SetDoubleRGB(0.7,0.7,0.7);
 			break;
+		case FSSUNSET:
+			// Sunset colors - mild orange sky, darker orange fog
+			gnd.SetDoubleRGB(gnd.Rd()*0.8,gnd.Gd()*0.7,gnd.Bd()*0.6);
+			sky.SetDoubleRGB(1.0,0.8,0.6); // Mild orange sky
+			horizonColor.SetDoubleRGB(0.8,0.7,0.6); // Neutral warm horizon
+			break;
 		}
 	}
 
@@ -7028,6 +7042,8 @@ void FsSimulation::SimDrawBackground(const ActualViewMode &actualViewMode,const 
 	{
 		groundSky->DrawCrappy(actualViewMode.viewPoint,gnd,sky,farZ,gndSpecular);
 	}
+
+
 
 	// 2016/11/26 To reduce the number of fragments,
 	//            DrawGroundMesh only draws pixels where stencil value is equal to zero.
